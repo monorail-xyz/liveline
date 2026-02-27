@@ -17,4 +17,7 @@ export type {
   WindowStyle,
   BadgeVariant,
   EventLine,
+  ScoreEvent,
+  MatchPeriod,
+  MatchTimeline,
 } from './types'

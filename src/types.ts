@@ -15,6 +15,29 @@ export interface ReferenceLine {
   label?: string
 }
 
+export interface ScoreEvent {
+  /** Unix timestamp in seconds when the goal was scored */
+  time: number
+  /** Which side scored */
+  side: 'home' | 'away'
+}
+
+export interface MatchPeriod {
+  /** Unique period identifier, e.g. '1H', '2H', 'ET1', 'ET2' */
+  id: string
+  /** Display label, e.g. '1st Half', '2nd Half' */
+  label: string
+  /** Unix seconds when this period kicked off */
+  kickoff: number
+  /** Nominal duration in seconds (e.g. 45*60 for a half) */
+  duration: number
+}
+
+export interface MatchTimeline {
+  /** Periods ordered chronologically. Consumer adds dynamically as feed reports. */
+  periods: MatchPeriod[]
+}
+
 export interface EventLine {
   /** Unix timestamp in seconds — same time axis as LivelinePoint.time */
   time: number
@@ -116,6 +139,13 @@ export interface LivelineProps {
 
   // Event lines — vertical markers at specific timestamps
   eventLines?: EventLine[]
+
+  // Score events — for computing score at crosshair hover time
+  scoreEvents?: ScoreEvent[]
+  /** Labels for score display (default: series labels or "Home"/"Away") */
+  scoreLabels?: { home: string; away: string }
+  /** Match timeline — enables period-aware windows, match-minute labels */
+  matchTimeline?: MatchTimeline
 
   // Optional
   referenceLine?: ReferenceLine
