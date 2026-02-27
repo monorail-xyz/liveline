@@ -22,9 +22,10 @@ describe('findPeriodAtTime', () => {
     expect(p?.id).toBe('2H')
   })
 
-  it('returns null for timestamps between periods (half-time)', () => {
+  it('returns period during stoppage (all time before next kickoff is stoppage)', () => {
+    // Time 4000 is past 1H nominal (3700) but before 2H kickoff (5000) — still 1H
     const p = findPeriodAtTime(periods, 4000)
-    expect(p).toBeNull()
+    expect(p?.id).toBe('1H')
   })
 
   it('returns null for timestamps before all periods', () => {
@@ -85,8 +86,9 @@ describe('getActivePeriodId', () => {
     expect(getActivePeriodId(periods, 1000 + 600)).toBe('1H')
   })
 
-  it('returns null during half-time', () => {
-    expect(getActivePeriodId(periods, 4500)).toBeNull()
+  it('returns 1H during stoppage (before next kickoff)', () => {
+    // 4500 is past 1H nominal but before 2H kickoff — still 1H stoppage
+    expect(getActivePeriodId(periods, 4500)).toBe('1H')
   })
 
   it('returns 2H during second half', () => {
@@ -99,5 +101,31 @@ describe('getActivePeriodId', () => {
 
   it('returns null before match', () => {
     expect(getActivePeriodId(periods, 500)).toBeNull()
+  })
+})
+
+describe('formatMatchMinute edge cases', () => {
+  it('handles single period (no second half yet)', () => {
+    const single: MatchPeriod[] = [
+      { id: '1H', label: '1st Half', kickoff: 1000, duration: HALF },
+    ]
+    expect(formatMatchMinute(1000 + 600, single, null)).toBe("10'")
+  })
+
+  it('handles extra time periods', () => {
+    const withET: MatchPeriod[] = [
+      { id: '1H', label: '1st Half', kickoff: 1000, duration: HALF },
+      { id: '2H', label: '2nd Half', kickoff: 5000, duration: HALF },
+      { id: 'ET1', label: 'Extra Time 1', kickoff: 10000, duration: 15 * 60 },
+      { id: 'ET2', label: 'Extra Time 2', kickoff: 11500, duration: 15 * 60 },
+    ]
+    // 5 minutes into ET1 = 90 + 5 = 95'
+    expect(formatMatchMinute(10000 + 300, withET, null)).toBe("95'")
+    // Scoped to ET1: just 5'
+    expect(formatMatchMinute(10000 + 300, withET, 'ET1')).toBe("5'")
+  })
+
+  it('handles zero elapsed (exactly at kickoff)', () => {
+    expect(formatMatchMinute(1000, periods, null)).toBe("0'")
   })
 })
