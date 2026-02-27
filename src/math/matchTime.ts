@@ -1,16 +1,12 @@
 import type { MatchPeriod } from '../types'
 
-/** Maximum stoppage time beyond nominal duration (seconds) before we consider the period over. */
-const MAX_STOPPAGE = 180
-
 /**
  * Find which period a unix-seconds timestamp falls in.
- * A timestamp is "in" a period if it's >= kickoff and either:
- *   - Before kickoff + duration (within nominal time), OR
- *   - In the stoppage window: past nominal end but within MAX_STOPPAGE seconds
- *     and before the next period's kickoff.
- * For the last period (no successor), stoppage extends indefinitely.
- * Returns null if between periods or before the match.
+ * A timestamp is "in" a period if it's >= kickoff and before the next
+ * period's kickoff (this captures stoppage time naturally — in soccer
+ * the clock doesn't stop, so everything between kickoff and next kickoff
+ * belongs to the current period). For the last period, extends indefinitely.
+ * Returns null only if before the first period's kickoff.
  */
 export function findPeriodAtTime(
   periods: MatchPeriod[],
@@ -19,15 +15,8 @@ export function findPeriodAtTime(
   for (let i = periods.length - 1; i >= 0; i--) {
     const p = periods[i]
     if (time < p.kickoff) continue
-    const nominalEnd = p.kickoff + p.duration
-    // Within nominal time — definitely in this period
-    if (time < nominalEnd) return p
-    // Past nominal end — check stoppage window
     const nextKickoff = i < periods.length - 1 ? periods[i + 1].kickoff : Infinity
-    const stoppageLimit = nextKickoff === Infinity
-      ? Infinity
-      : nominalEnd + MAX_STOPPAGE
-    if (time < Math.min(stoppageLimit, nextKickoff)) return p
+    if (time < nextKickoff) return p
   }
   return null
 }

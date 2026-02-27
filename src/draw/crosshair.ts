@@ -111,6 +111,7 @@ export function drawMultiCrosshair(
   tooltipY?: number,
   tooltipOutline?: boolean,
   liveDotX?: number,
+  scoreLine?: string,
 ) {
   if (scrubOpacity < 0.01 || entries.length === 0) return
 
@@ -159,6 +160,10 @@ export function drawMultiCrosshair(
   const segments: Seg[] = [
     { text: timeText, color: palette.gridLabel },
   ]
+  if (scoreLine) {
+    segments.push({ text: sep, color: palette.gridLabel })
+    segments.push({ text: scoreLine, color: palette.tooltipText })
+  }
   for (const e of entries) {
     segments.push({ text: sep, color: palette.gridLabel })
     // Inline dot (drawn as circle, not text)

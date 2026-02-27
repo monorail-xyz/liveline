@@ -327,7 +327,7 @@ export function Liveline({
                 const isActive = w.secs === activeWindowSecs
                 return (
                   <button
-                    key={w.secs}
+                    key={(w as any)._periodId ?? w.secs}
                     ref={(el) => {
                       if (el) windowBtnRefs.current.set(w.secs, el)
                       else windowBtnRefs.current.delete(w.secs)

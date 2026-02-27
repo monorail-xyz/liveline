@@ -278,6 +278,8 @@ export interface MultiSeriesDrawOptions {
   primaryPalette: LivelinePalette
   eventLines?: EventLine[]
   disableGridEdgeFade?: boolean
+  /** Score line displayed in crosshair tooltip (e.g. "Arsenal 0 - 1 Chelsea") */
+  scoreLine?: string
 }
 
 /**
@@ -429,6 +431,7 @@ export function drawMultiFrame(
         opts.tooltipY,
         opts.tooltipOutline,
         maxLiveDotX,
+        opts.scoreLine,
       )
     }
   }
