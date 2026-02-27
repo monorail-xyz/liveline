@@ -1,8 +1,9 @@
 import { useRef, useEffect, useCallback } from 'react'
-import type { LivelinePoint, LivelinePalette, LivelineSeries, Momentum, ReferenceLine, HoverPoint, Padding, ChartLayout, OrderbookData, DegenOptions, BadgeVariant, CandlePoint, EventLine } from './types'
+import type { LivelinePoint, LivelinePalette, LivelineSeries, Momentum, ReferenceLine, HoverPoint, Padding, ChartLayout, OrderbookData, DegenOptions, BadgeVariant, CandlePoint, EventLine, ScoreEvent, MatchTimeline } from './types'
 import { lerp } from './math/lerp'
 import { computeRange } from './math/range'
 import { detectMomentum } from './math/momentum'
+import { formatMatchMinute, getActivePeriodId } from './math/matchTime'
 import { interpolateAtTime } from './math/interpolate'
 import { getDpr, applyDpr } from './canvas/dpr'
 import { drawFrame, drawCandleFrame, drawMultiFrame, FADE_EDGE_WIDTH } from './draw'
@@ -70,6 +71,14 @@ interface EngineConfig {
 
   // Event lines
   eventLines?: EventLine[]
+
+  // Score events
+  scoreEvents?: ScoreEvent[]
+  scoreLabels?: { home: string; away: string }
+
+  // Match timeline
+  matchTimeline?: MatchTimeline
+  selectedPeriodId?: string
 }
 
 interface BadgeEls {
@@ -561,6 +570,56 @@ function updateCandleWindowTransition(
   }
 
   return { windowSecs: resultWindow, windowTransProgress }
+}
+
+function computeMatchEdges(
+  cfg: EngineConfig,
+  now: number,
+  windowSecs: number,
+  buffer: number,
+  leftEdge: number,
+  rightEdge: number,
+): { effectiveLeftEdge: number; effectiveRightEdge: number; matchFrozen: boolean } {
+  if (!cfg.matchTimeline?.periods.length || !cfg.selectedPeriodId) {
+    return { effectiveLeftEdge: leftEdge, effectiveRightEdge: rightEdge, matchFrozen: false }
+  }
+
+  const mt = cfg.matchTimeline
+  const activePId = getActivePeriodId(mt.periods, now)
+
+  if (cfg.selectedPeriodId === 'full') {
+    return {
+      effectiveLeftEdge: mt.periods[0].kickoff,
+      effectiveRightEdge: now + windowSecs * buffer,
+      matchFrozen: false,
+    }
+  }
+
+  const period = mt.periods.find(p => p.id === cfg.selectedPeriodId)
+  if (!period) {
+    return { effectiveLeftEdge: leftEdge, effectiveRightEdge: rightEdge, matchFrozen: false }
+  }
+
+  const isLive = activePId === period.id
+  if (isLive) {
+    return {
+      effectiveLeftEdge: period.kickoff,
+      effectiveRightEdge: now + period.duration * buffer,
+      matchFrozen: false,
+    }
+  }
+
+  // Past period: frozen
+  const periodIdx = mt.periods.indexOf(period)
+  const nextPeriod = periodIdx < mt.periods.length - 1 ? mt.periods[periodIdx + 1] : null
+  const periodEnd = nextPeriod
+    ? nextPeriod.kickoff
+    : period.kickoff + period.duration * 1.1
+  return {
+    effectiveLeftEdge: period.kickoff,
+    effectiveRightEdge: periodEnd,
+    matchFrozen: true,
+  }
 }
 
 export function useLivelineEngine(
@@ -1558,7 +1617,14 @@ export function useLivelineEngine(
 
     const rightEdge = now + windowSecs * buffer
     const leftEdge = rightEdge - windowSecs
-    const filterRight = rightEdge - (rightEdge - now) * pauseProgress
+
+    // Match timeline — override edges for period views
+    const matchEdges = computeMatchEdges(cfg, now, windowSecs, buffer, leftEdge, rightEdge)
+    const effectiveLeftEdge = matchEdges.effectiveLeftEdge
+    const effectiveRightEdge = matchEdges.effectiveRightEdge
+    const matchFrozen = matchEdges.matchFrozen
+
+    const filterRight = effectiveRightEdge - (effectiveRightEdge - now) * pauseProgress
 
     // Build per-series visible arrays and compute global range
     // Use paused snapshots when available to prevent left-edge erosion
@@ -1571,7 +1637,7 @@ export function useLivelineEngine(
       const seriesData = snap?.data ?? s.data
       const visible: LivelinePoint[] = []
       for (const p of seriesData) {
-        if (p.time >= leftEdge - 2 && p.time <= filterRight) visible.push(p)
+        if (p.time >= effectiveLeftEdge - 2 && p.time <= filterRight) visible.push(p)
       }
       const sv = smoothValues.get(s.id) ?? s.value
       const alpha = seriesAlphas.get(s.id) ?? 1
@@ -1628,12 +1694,20 @@ export function useLivelineEngine(
     displayMaxRef.current = rangeResult.displayMax
     const { minVal, maxVal, valRange } = rangeResult
 
+    const effectiveFormatTime = cfg.matchTimeline?.periods.length
+      ? (t: number) => formatMatchMinute(
+          t,
+          cfg.matchTimeline!.periods,
+          cfg.selectedPeriodId === 'full' ? null : cfg.selectedPeriodId ?? null,
+        )
+      : cfg.formatTime
+
     const layout: ChartLayout = {
       w, h, pad,
       chartW, chartH,
-      leftEdge, rightEdge,
+      leftEdge: effectiveLeftEdge, rightEdge: effectiveRightEdge,
       minVal, maxVal, valRange,
-      toX: (t: number) => pad.left + ((t - leftEdge) / (rightEdge - leftEdge)) * chartW,
+      toX: (t: number) => pad.left + ((t - effectiveLeftEdge) / (effectiveRightEdge - effectiveLeftEdge)) * chartW,
       toY: (v: number) => pad.top + (1 - (v - minVal) / valRange) * chartH,
     }
 
@@ -1647,7 +1721,7 @@ export function useLivelineEngine(
     if (hoverPx !== null && hoverPx >= pad.left && hoverPx <= w - pad.right) {
       const maxHoverX = layout.toX(now)
       const clampedX = Math.min(hoverPx, maxHoverX)
-      const t = leftEdge + ((clampedX - pad.left) / chartW) * (rightEdge - leftEdge)
+      const t = effectiveLeftEdge + ((clampedX - pad.left) / chartW) * (effectiveRightEdge - effectiveLeftEdge)
       drawHoverX = clampedX
       drawHoverTime = t
       isActiveHover = true
@@ -1682,12 +1756,28 @@ export function useLivelineEngine(
       hoverEntries = lastHoverEntriesRef.current
     }
 
+    // Compute score at hover time
+    let scoreLine: string | undefined
+    if (cfg.scoreEvents && cfg.scoreEvents.length > 0 && drawHoverTime !== null) {
+      let home = 0
+      let away = 0
+      for (const ev of cfg.scoreEvents) {
+        if (ev.time <= drawHoverTime) {
+          if (ev.side === 'home') home++
+          else away++
+        }
+      }
+      const homeLabel = cfg.scoreLabels?.home ?? 'Home'
+      const awayLabel = cfg.scoreLabels?.away ?? 'Away'
+      scoreLine = `${homeLabel} ${home} - ${away} ${awayLabel}`
+    }
+
     // Draw multi-series frame
     drawMultiFrame(ctx, layout, {
       series: seriesEntries,
       now,
       showGrid: cfg.showGrid,
-      showPulse: cfg.showPulse,
+      showPulse: matchFrozen ? false : cfg.showPulse,
       referenceLine: cfg.referenceLine,
       hoverX: drawHoverX,
       hoverTime: drawHoverTime,
@@ -1695,7 +1785,7 @@ export function useLivelineEngine(
       scrubAmount: scrubAmountRef.current,
       windowSecs,
       formatValue: cfg.formatValue,
-      formatTime: cfg.formatTime,
+      formatTime: effectiveFormatTime,
       gridState: gridStateRef.current,
       timeAxisState: timeAxisStateRef.current,
       dt,
@@ -1703,11 +1793,12 @@ export function useLivelineEngine(
       tooltipY: cfg.tooltipY,
       tooltipOutline: cfg.tooltipOutline,
       chartReveal,
-      pauseProgress,
+      pauseProgress: matchFrozen ? 1 : pauseProgress,
       now_ms,
       primaryPalette: cfg.palette,
       eventLines: cfg.eventLines,
       disableGridEdgeFade: !!cfg.fixedRange,
+      scoreLine,
     })
 
     // During reverse morph (chart → loading/empty), overlay the empty text
@@ -1775,12 +1866,18 @@ export function useLivelineEngine(
     const rightEdge = now + windowSecs * buffer
     const leftEdge = rightEdge - windowSecs
 
+    // Match timeline — override edges for period views
+    const matchEdges = computeMatchEdges(cfg, now, windowSecs, buffer, leftEdge, rightEdge)
+    const effectiveLeftEdge = matchEdges.effectiveLeftEdge
+    const effectiveRightEdge = matchEdges.effectiveRightEdge
+    const matchFrozen = matchEdges.matchFrozen
+
     // Filter visible points — when pausing, contract right edge to `now`
     // so new data (with real-time timestamps) can't appear past the live dot
-    const filterRight = rightEdge - (rightEdge - now) * pauseProgress
+    const filterRight = effectiveRightEdge - (effectiveRightEdge - now) * pauseProgress
     const visible: LivelinePoint[] = []
     for (const p of effectivePoints) {
-      if (p.time >= leftEdge - 2 && p.time <= filterRight) {
+      if (p.time >= effectiveLeftEdge - 2 && p.time <= filterRight) {
         visible.push(p)
       }
     }
@@ -1810,12 +1907,20 @@ export function useLivelineEngine(
     displayMaxRef.current = rangeResult.displayMax
     const { minVal, maxVal, valRange } = rangeResult
 
+    const effectiveFormatTime = cfg.matchTimeline?.periods.length
+      ? (t: number) => formatMatchMinute(
+          t,
+          cfg.matchTimeline!.periods,
+          cfg.selectedPeriodId === 'full' ? null : cfg.selectedPeriodId ?? null,
+        )
+      : cfg.formatTime
+
     const layout: ChartLayout = {
       w, h, pad,
       chartW, chartH,
-      leftEdge, rightEdge,
+      leftEdge: effectiveLeftEdge, rightEdge: effectiveRightEdge,
       minVal, maxVal, valRange,
-      toX: (t: number) => pad.left + ((t - leftEdge) / (rightEdge - leftEdge)) * chartW,
+      toX: (t: number) => pad.left + ((t - effectiveLeftEdge) / (effectiveRightEdge - effectiveLeftEdge)) * chartW,
       toY: (v: number) => pad.top + (1 - (v - minVal) / valRange) * chartH,
     }
 
@@ -1826,7 +1931,7 @@ export function useLivelineEngine(
     const hoverResult = updateHoverState(
       hoverXRef.current, pad, w, layout, now, visible,
       scrubAmountRef.current, lastHoverRef.current,
-      cfg, noMotion, leftEdge, rightEdge, chartW, dt,
+      cfg, noMotion, effectiveLeftEdge, effectiveRightEdge, chartW, dt,
     )
     scrubAmountRef.current = hoverResult.scrubAmount
     lastHoverRef.current = hoverResult.lastHover
@@ -1848,7 +1953,7 @@ export function useLivelineEngine(
       arrowState: arrowStateRef.current,
       showGrid: cfg.showGrid,
       showMomentum: cfg.showMomentum,
-      showPulse: cfg.showPulse,
+      showPulse: matchFrozen ? false : cfg.showPulse,
       showFill: cfg.showFill,
       referenceLine: cfg.referenceLine,
       hoverX: drawHoverX,
@@ -1857,7 +1962,7 @@ export function useLivelineEngine(
       scrubAmount: scrubAmountRef.current,
       windowSecs,
       formatValue: cfg.formatValue,
-      formatTime: cfg.formatTime,
+      formatTime: effectiveFormatTime,
       gridState: gridStateRef.current,
       timeAxisState: timeAxisStateRef.current,
       dt,
@@ -1871,7 +1976,7 @@ export function useLivelineEngine(
       swingMagnitude,
       shakeState: cfg.degenOptions ? shakeStateRef.current : undefined,
       chartReveal,
-      pauseProgress,
+      pauseProgress: matchFrozen ? 1 : pauseProgress,
       now_ms,
       eventLines: cfg.eventLines,
       disableGridEdgeFade: !!cfg.fixedRange,

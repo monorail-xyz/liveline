@@ -60,6 +60,9 @@ export function Liveline({
   seriesToggleCompact = false,
   fixedRange,
   eventLines,
+  scoreEvents,
+  scoreLabels,
+  matchTimeline,
   className,
   style,
 }: LivelineProps) {
@@ -118,6 +121,39 @@ export function Liveline({
   const degenOptions: DegenOptions | undefined = degenEnabled
     ? (typeof degenProp === 'object' ? degenProp : {})
     : undefined
+
+  // Match timeline — derive windows from periods
+  const matchWindows = useMemo(() => {
+    if (!matchTimeline?.periods.length) return null
+    const periodWindows = matchTimeline.periods.map(p => ({
+      label: p.label,
+      secs: p.duration,
+      _periodId: p.id,
+    }))
+    const totalSecs = matchTimeline.periods.reduce((sum, p) => sum + p.duration, 0)
+    periodWindows.push({ label: 'Full', secs: totalSecs, _periodId: 'full' })
+    return periodWindows
+  }, [matchTimeline])
+
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(
+    matchTimeline?.periods[0]?.id ?? null
+  )
+
+  const activePeriodId = useMemo(() => {
+    if (!matchTimeline?.periods.length) return null
+    const now = Date.now() / 1000
+    for (let i = matchTimeline.periods.length - 1; i >= 0; i--) {
+      const p = matchTimeline.periods[i]
+      if (now >= p.kickoff) {
+        const nextKickoff = i < matchTimeline.periods.length - 1
+          ? matchTimeline.periods[i + 1].kickoff : Infinity
+        if (now < nextKickoff) return p.id
+      }
+    }
+    return null
+  }, [matchTimeline, Math.floor(Date.now() / 5000)])
+
+  const effectiveWindows = matchWindows ?? windows
 
   // Window buttons state
   const [activeWindowSecs, setActiveWindowSecs] = useState(
@@ -219,6 +255,10 @@ export function Liveline({
     hiddenSeriesIds: hiddenSeries,
     fixedRange,
     eventLines,
+    scoreEvents,
+    scoreLabels,
+    matchTimeline,
+    selectedPeriodId: matchTimeline ? (selectedPeriodId ?? undefined) : undefined,
   })
 
   const cursorStyle = scrub ? cursor : 'default'
@@ -247,11 +287,16 @@ export function Liveline({
         />
       )}
 
+      {/* Match timeline pulse animation */}
+      {matchTimeline && (
+        <style>{`@keyframes liveline-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
+      )}
+
       {/* Control bars row — window pills + mode toggle + series chips side by side */}
-      {((windows && windows.length > 0) || onModeChange || showSeriesToggle) && (
+      {((effectiveWindows && effectiveWindows.length > 0) || onModeChange || showSeriesToggle) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, marginLeft: pad.left }}>
           {/* Time window controls */}
-          {windows && windows.length > 0 && (
+          {effectiveWindows && effectiveWindows.length > 0 && (
             <div
               ref={windowBarRef}
               style={{
@@ -278,7 +323,7 @@ export function Liveline({
                   pointerEvents: 'none' as const,
                 }} />
               )}
-              {windows.map((w) => {
+              {effectiveWindows.map((w) => {
                 const isActive = w.secs === activeWindowSecs
                 return (
                   <button
@@ -290,6 +335,9 @@ export function Liveline({
                     onClick={() => {
                       setActiveWindowSecs(w.secs)
                       onWindowChange?.(w.secs)
+                      if (matchTimeline && (w as any)._periodId) {
+                        setSelectedPeriodId((w as any)._periodId)
+                      }
                     }}
                     style={{
                       position: 'relative',
@@ -308,6 +356,17 @@ export function Liveline({
                     }}
                   >
                     {w.label}
+                    {matchTimeline && (w as any)._periodId === activePeriodId && (
+                      <span style={{
+                        display: 'inline-block',
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: '#22c55e',
+                        marginLeft: 4,
+                        animation: 'liveline-pulse 2s ease-in-out infinite',
+                      }} />
+                    )}
                   </button>
                 )
               })}
