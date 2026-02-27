@@ -10,6 +10,8 @@ import { drawOrderbook, type OrderbookState } from './orderbook'
 import { drawParticles, spawnOnSwing, type ParticleState } from './particles'
 import { drawCandlesticks, drawClosePrice, drawCandleCrosshair, drawLineModeCrosshair } from './candlestick'
 import { drawEmpty } from './empty'
+import { drawEventLines } from './eventLines'
+import type { EventLine } from '../types'
 
 // Constants
 const SHAKE_DECAY_RATE = 0.002
@@ -60,6 +62,8 @@ export interface DrawOptions {
   chartReveal: number       // 0 = loading/morphing from center, 1 = fully revealed
   pauseProgress: number     // 0 = playing, 1 = fully paused
   now_ms: number            // performance.now() for breathing animation timing
+  eventLines?: EventLine[]
+  disableGridEdgeFade?: boolean
 }
 
 /**
@@ -112,7 +116,7 @@ export function drawFrame(
     if (gridAlpha > 0.01) {
       ctx.save()
       if (gridAlpha < 1) ctx.globalAlpha = gridAlpha
-      drawGrid(ctx, layout, palette, opts.formatValue, opts.gridState, opts.dt)
+      drawGrid(ctx, layout, palette, opts.formatValue, opts.gridState, opts.dt, opts.disableGridEdgeFade)
       ctx.restore()
     }
   }
@@ -122,6 +126,14 @@ export function drawFrame(
     ctx.save()
     if (reveal < 1) ctx.globalAlpha = reveal
     drawOrderbook(ctx, layout, palette, opts.orderbookData, opts.dt, opts.orderbookState, opts.swingMagnitude)
+    ctx.restore()
+  }
+
+  // 2c. Event lines (between grid and data lines)
+  if (opts.eventLines && opts.eventLines.length > 0 && reveal > 0.01) {
+    ctx.save()
+    if (reveal < 1) ctx.globalAlpha = revealRamp(0.15, 0.7)
+    drawEventLines(ctx, layout, palette, opts.eventLines)
     ctx.restore()
   }
 
@@ -264,6 +276,8 @@ export interface MultiSeriesDrawOptions {
   now_ms: number
   /** Primary palette (from first series) for grid/axis/crosshair colors */
   primaryPalette: LivelinePalette
+  eventLines?: EventLine[]
+  disableGridEdgeFade?: boolean
 }
 
 /**
@@ -297,9 +311,17 @@ export function drawMultiFrame(
     if (gridAlpha > 0.01) {
       ctx.save()
       if (gridAlpha < 1) ctx.globalAlpha = gridAlpha
-      drawGrid(ctx, layout, palette, opts.formatValue, opts.gridState, opts.dt)
+      drawGrid(ctx, layout, palette, opts.formatValue, opts.gridState, opts.dt, opts.disableGridEdgeFade)
       ctx.restore()
     }
+  }
+
+  // 2b. Event lines (between grid and data lines)
+  if (opts.eventLines && opts.eventLines.length > 0 && reveal > 0.01) {
+    ctx.save()
+    if (reveal < 1) ctx.globalAlpha = revealRamp(0.15, 0.7)
+    drawEventLines(ctx, layout, palette, opts.eventLines)
+    ctx.restore()
   }
 
   // 3. Draw each series line (back to front, no fill, with scrub dimming)
@@ -451,6 +473,8 @@ export interface CandleDrawOptions {
   emptyText?: string
   loadingAlpha: number
   showEmptyOverlay: boolean  // true only when collapsing to empty (not loading, not forward morph)
+  eventLines?: EventLine[]
+  disableGridEdgeFade?: boolean
 }
 
 /**
@@ -494,8 +518,19 @@ export function drawCandleFrame(
   if (opts.showGrid && gridAlpha > 0.01) {
     ctx.save()
     if (gridAlpha < 1) ctx.globalAlpha = gridAlpha
-    drawGrid(ctx, layout, palette, opts.formatValue, opts.gridState, opts.dt)
+    drawGrid(ctx, layout, palette, opts.formatValue, opts.gridState, opts.dt, opts.disableGridEdgeFade)
     ctx.restore()
+  }
+
+  // 1b. Event lines (between grid and candles/line)
+  if (opts.eventLines && opts.eventLines.length > 0 && reveal > 0.01) {
+    const evAlpha = revealRamp(0.25, 0.6)
+    if (evAlpha > 0.01) {
+      ctx.save()
+      if (evAlpha < 1) ctx.globalAlpha = evAlpha
+      drawEventLines(ctx, layout, palette, opts.eventLines)
+      ctx.restore()
+    }
   }
 
   // 2. Line — morph line that transforms from loading squiggly into data.

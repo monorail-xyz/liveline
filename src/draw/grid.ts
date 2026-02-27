@@ -52,6 +52,7 @@ export function drawGrid(
   formatValue: (v: number) => string,
   state: GridState,
   dt: number,
+  disableEdgeFade?: boolean,
 ) {
   const { w, h, pad, valRange, minVal, maxVal, toY } = layout
   const chartH = h - pad.top - pad.bottom
@@ -72,6 +73,7 @@ export function drawGrid(
   // Edge fade
   const fadeZone = 32
   const edgeAlpha = (y: number): number => {
+    if (disableEdgeFade) return 1
     const fromEdge = Math.min(y - pad.top, h - pad.bottom - y)
     if (fromEdge >= fadeZone) return 1
     if (fromEdge <= 0) return 0

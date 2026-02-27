@@ -15,6 +15,19 @@ export interface ReferenceLine {
   label?: string
 }
 
+export interface EventLine {
+  /** Unix timestamp in seconds — same time axis as LivelinePoint.time */
+  time: number
+  /** Short label shown above the line (e.g. "⚽ Goal", "🟨 Yellow") */
+  label?: string
+  /** Line color (default: palette-derived muted white) */
+  color?: string
+  /** Dash pattern [dash, gap] in px (default: [4, 4]) */
+  dash?: [number, number]
+  /** Line width in px (default: 1) */
+  width?: number
+}
+
 export interface HoverPoint {
   time: number
   value: number
@@ -97,6 +110,12 @@ export interface LivelineProps {
 
   // Orderbook
   orderbook?: OrderbookData
+
+  // Fixed Y-axis range — bypass auto-scaling (e.g. { min: 0, max: 100 })
+  fixedRange?: { min: number; max: number }
+
+  // Event lines — vertical markers at specific timestamps
+  eventLines?: EventLine[]
 
   // Optional
   referenceLine?: ReferenceLine

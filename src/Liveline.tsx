@@ -58,6 +58,8 @@ export function Liveline({
   onModeChange,
   onSeriesToggle,
   seriesToggleCompact = false,
+  fixedRange,
+  eventLines,
   className,
   style,
 }: LivelineProps) {
@@ -215,6 +217,8 @@ export function Liveline({
     multiSeries,
     isMultiSeries,
     hiddenSeriesIds: hiddenSeries,
+    fixedRange,
+    eventLines,
   })
 
   const cursorStyle = scrub ? cursor : 'default'

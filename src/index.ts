@@ -16,4 +16,5 @@ export type {
   DegenOptions,
   WindowStyle,
   BadgeVariant,
+  EventLine,
 } from './types'

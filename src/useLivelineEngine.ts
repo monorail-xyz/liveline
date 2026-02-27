@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react'
-import type { LivelinePoint, LivelinePalette, LivelineSeries, Momentum, ReferenceLine, HoverPoint, Padding, ChartLayout, OrderbookData, DegenOptions, BadgeVariant, CandlePoint } from './types'
+import type { LivelinePoint, LivelinePalette, LivelineSeries, Momentum, ReferenceLine, HoverPoint, Padding, ChartLayout, OrderbookData, DegenOptions, BadgeVariant, CandlePoint, EventLine } from './types'
 import { lerp } from './math/lerp'
 import { computeRange } from './math/range'
 import { detectMomentum } from './math/momentum'
@@ -64,6 +64,12 @@ interface EngineConfig {
   }>
   isMultiSeries?: boolean
   hiddenSeriesIds?: Set<string>
+
+  // Fixed Y-axis range
+  fixedRange?: { min: number; max: number }
+
+  // Event lines
+  eventLines?: EventLine[]
 }
 
 interface BadgeEls {
@@ -162,7 +168,9 @@ function updateWindowTransition(
       }
     }
     if (targetVisible.length > 0) {
-      const targetRange = computeRange(targetVisible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate)
+      const targetRange = cfg.fixedRange
+        ? { min: cfg.fixedRange.min, max: cfg.fixedRange.max }
+        : computeRange(targetVisible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate)
       wt.rangeToMin = targetRange.min
       wt.rangeToMax = targetRange.max
     }
@@ -1410,6 +1418,8 @@ export function useLivelineEngine(
         // loading→live (where loadingAlpha starts at ~1), while still
         // allowing smooth fade-out during empty→live (loadingAlpha is 0).
         showEmptyOverlay: !(cfg.loading ?? false) && loadingAlpha < 0.01,
+        eventLines: cfg.eventLines,
+        disableGridEdgeFade: !!cfg.fixedRange,
       })
 
       // Badge in candle mode — only when in line mode (lineModeProg > 0.5)
@@ -1529,7 +1539,9 @@ export function useLivelineEngine(
           if (p.time >= targetLeftEdge - 2 && p.time <= targetRightEdge) targetVisible.push(p)
         }
         if (targetVisible.length > 0) {
-          const range = computeRange(targetVisible, sv, cfg.referenceLine?.value, cfg.exaggerate)
+          const range = cfg.fixedRange
+            ? { min: cfg.fixedRange.min, max: cfg.fixedRange.max }
+            : computeRange(targetVisible, sv, cfg.referenceLine?.value, cfg.exaggerate)
           if (range.min < unionMin) unionMin = range.min
           if (range.max > unionMax) unionMax = range.max
         }
@@ -1566,7 +1578,9 @@ export function useLivelineEngine(
       if (visible.length >= 2) {
         // Only include in range if series is at least partially visible
         if (alpha > 0.01) {
-          const range = computeRange(visible, sv, cfg.referenceLine?.value, cfg.exaggerate)
+          const range = cfg.fixedRange
+            ? { min: cfg.fixedRange.min, max: cfg.fixedRange.max }
+            : computeRange(visible, sv, cfg.referenceLine?.value, cfg.exaggerate)
           if (range.min < globalMin) globalMin = range.min
           if (range.max > globalMax) globalMax = range.max
         }
@@ -1692,6 +1706,8 @@ export function useLivelineEngine(
       pauseProgress,
       now_ms,
       primaryPalette: cfg.palette,
+      eventLines: cfg.eventLines,
+      disableGridEdgeFade: !!cfg.fixedRange,
     })
 
     // During reverse morph (chart → loading/empty), overlay the empty text
@@ -1776,7 +1792,9 @@ export function useLivelineEngine(
     }
 
     // Compute + smooth Y range
-    const computedRange = computeRange(visible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate)
+    const computedRange = cfg.fixedRange
+      ? { min: cfg.fixedRange.min, max: cfg.fixedRange.max }
+      : computeRange(visible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate)
     const isWindowTransitioning = transition.startMs > 0
     const rangeResult = updateRange(
       computedRange, rangeInitedRef.current,
@@ -1855,6 +1873,8 @@ export function useLivelineEngine(
       chartReveal,
       pauseProgress,
       now_ms,
+      eventLines: cfg.eventLines,
+      disableGridEdgeFade: !!cfg.fixedRange,
     })
 
     // During morph (chart ↔ empty), overlay the gradient gap + text on
