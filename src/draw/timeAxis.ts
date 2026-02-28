@@ -17,6 +17,8 @@ export function drawTimeAxis(
   formatTime: (t: number) => string,
   state: TimeAxisState,
   dt: number,
+  /** When set, snap labels to round intervals relative to this base (e.g. kickoff time) instead of epoch. */
+  alignBase?: number,
 ) {
   const { h, pad, leftEdge, rightEdge, toX } = layout
   const chartLeft = pad.left
@@ -48,12 +50,17 @@ export function drawTimeAxis(
   // Cap at 30 labels as a safety valve — during wide→narrow transitions the
   // target interval can be tiny relative to the current display span.
   // For day+ intervals, align to local midnight instead of UTC epoch.
-  const useLocalDays = interval >= 86400
+  // When alignBase is set, snap to round multiples relative to that base
+  // (e.g. kickoff time) so match-minute labels read 0', 5', 10' etc.
+  const useLocalDays = !alignBase && interval >= 86400
   let firstTime: number
   if (useLocalDays) {
     const d = new Date((leftEdge - interval) * 1000)
     d.setHours(0, 0, 0, 0)
     firstTime = d.getTime() / 1000
+  } else if (alignBase != null) {
+    const offset = leftEdge - interval - alignBase
+    firstTime = alignBase + Math.ceil(offset / interval) * interval
   } else {
     firstTime = Math.ceil((leftEdge - interval) / interval) * interval
   }

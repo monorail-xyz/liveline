@@ -64,6 +64,9 @@ export interface DrawOptions {
   now_ms: number            // performance.now() for breathing animation timing
   eventLines?: EventLine[]
   disableGridEdgeFade?: boolean
+  formatTimeCrosshair?: (t: number) => string
+  /** Align time axis labels to round multiples relative to this base (e.g. kickoff time). */
+  timeAxisAlignBase?: number
 }
 
 /**
@@ -147,7 +150,7 @@ export function drawFrame(
     if (timeAlpha > 0.01) {
       ctx.save()
       if (timeAlpha < 1) ctx.globalAlpha = timeAlpha
-      drawTimeAxis(ctx, layout, palette, opts.windowSecs, opts.targetWindowSecs, opts.formatTime, opts.timeAxisState, opts.dt)
+      drawTimeAxis(ctx, layout, palette, opts.windowSecs, opts.targetWindowSecs, opts.formatTime, opts.timeAxisState, opts.dt, opts.timeAxisAlignBase)
       ctx.restore()
     }
   }
@@ -227,7 +230,7 @@ export function drawFrame(
       drawCrosshair(
         ctx, layout, palette,
         opts.hoverX, opts.hoverValue, opts.hoverTime,
-        opts.formatValue, opts.formatTime,
+        opts.formatValue, opts.formatTimeCrosshair ?? opts.formatTime,
         scrubOpacity,
         opts.tooltipY,
         lastPt[0], // liveDotX — tooltip right edge stops here
@@ -280,6 +283,8 @@ export interface MultiSeriesDrawOptions {
   disableGridEdgeFade?: boolean
   /** Score line displayed in crosshair tooltip (e.g. "Arsenal 0 - 1 Chelsea") */
   scoreLine?: string
+  formatTimeCrosshair?: (t: number) => string
+  timeAxisAlignBase?: number
 }
 
 /**
@@ -358,7 +363,7 @@ export function drawMultiFrame(
     if (timeAlpha > 0.01) {
       ctx.save()
       if (timeAlpha < 1) ctx.globalAlpha = timeAlpha
-      drawTimeAxis(ctx, layout, palette, opts.windowSecs, opts.targetWindowSecs, opts.formatTime, opts.timeAxisState, opts.dt)
+      drawTimeAxis(ctx, layout, palette, opts.windowSecs, opts.targetWindowSecs, opts.formatTime, opts.timeAxisState, opts.dt, opts.timeAxisAlignBase)
       ctx.restore()
     }
   }
@@ -426,7 +431,7 @@ export function drawMultiFrame(
         ctx, layout, palette,
         opts.hoverX, opts.hoverTime,
         opts.hoverEntries,
-        opts.formatValue, opts.formatTime,
+        opts.formatValue, opts.formatTimeCrosshair ?? opts.formatTime,
         scrubOpacity,
         opts.tooltipY,
         opts.tooltipOutline,

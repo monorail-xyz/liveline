@@ -21,6 +21,24 @@ export function findPeriodAtTime(
   return null
 }
 
+/** Format a minute value, snapping to whole minutes or half-minutes only (for axis labels). */
+function fmtMin(min: number): string {
+  const totalSecs = Math.round(min * 60)
+  const snapped = Math.round(totalSecs / 30) * 30
+  const m = Math.floor(snapped / 60)
+  const s = snapped % 60
+  if (s === 0) return `${m}'`
+  return `${m}'${s.toString().padStart(2, '0')}"`
+}
+
+/** Format a minute value with exact seconds, always showing seconds (for crosshair tooltip). */
+function fmtMinExact(min: number): string {
+  const totalSecs = Math.round(min * 60)
+  const m = Math.floor(totalSecs / 60)
+  const s = totalSecs % 60
+  return `${m}'${s.toString().padStart(2, '0')}"`
+}
+
 /**
  * Format a unix timestamp as a match-minute string.
  *
@@ -33,8 +51,10 @@ export function formatMatchMinute(
   time: number,
   periods: MatchPeriod[],
   scopeId: string | null,
+  exact?: boolean,
 ): string {
   if (periods.length === 0) return "0'"
+  const fmt = exact ? fmtMinExact : fmtMin
 
   const period = findPeriodAtTime(periods, time)
 
@@ -49,7 +69,7 @@ export function formatMatchMinute(
 
   if (scopeId) {
     if (elapsedMin <= nominalMin) {
-      return `${Math.floor(elapsedMin)}'`
+      return fmt(elapsedMin)
     }
     const stoppage = Math.ceil(elapsedMin - nominalMin)
     return `${Math.floor(nominalMin)}+${stoppage}'`
@@ -65,7 +85,7 @@ export function formatMatchMinute(
   const periodEnd = cumulativeBase + nominalMin
 
   if (matchMin <= periodEnd) {
-    return `${Math.floor(matchMin)}'`
+    return fmt(matchMin)
   }
   const stoppage = Math.ceil(matchMin - periodEnd)
   return `${Math.floor(periodEnd)}+${stoppage}'`

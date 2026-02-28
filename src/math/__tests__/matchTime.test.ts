@@ -128,4 +128,22 @@ describe('formatMatchMinute edge cases', () => {
   it('handles zero elapsed (exactly at kickoff)', () => {
     expect(formatMatchMinute(1000, periods, null)).toBe("0'")
   })
+
+  it('shows seconds for sub-minute timestamps', () => {
+    // 30 seconds into 1H
+    expect(formatMatchMinute(1000 + 30, periods, null)).toBe("0'30\"")
+    // 1 minute 30 seconds
+    expect(formatMatchMinute(1000 + 90, periods, null)).toBe("1'30\"")
+    // Exactly 2 minutes — no seconds
+    expect(formatMatchMinute(1000 + 120, periods, null)).toBe("2'")
+  })
+
+  it('exact mode always shows seconds', () => {
+    // Exactly 1 minute — exact mode shows 1'00"
+    expect(formatMatchMinute(1000 + 60, periods, null, true)).toBe("1'00\"")
+    // Exactly 0 — shows 0'00"
+    expect(formatMatchMinute(1000, periods, null, true)).toBe("0'00\"")
+    // 1 min 17 sec — shows 1'17"
+    expect(formatMatchMinute(1000 + 77, periods, null, true)).toBe("1'17\"")
+  })
 })

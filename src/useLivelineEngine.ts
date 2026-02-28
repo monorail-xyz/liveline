@@ -1694,13 +1694,24 @@ export function useLivelineEngine(
     displayMaxRef.current = rangeResult.displayMax
     const { minVal, maxVal, valRange } = rangeResult
 
+    const matchScope = cfg.selectedPeriodId === 'full' ? null : cfg.selectedPeriodId ?? null
     const effectiveFormatTime = cfg.matchTimeline?.periods.length
-      ? (t: number) => formatMatchMinute(
-          t,
-          cfg.matchTimeline!.periods,
-          cfg.selectedPeriodId === 'full' ? null : cfg.selectedPeriodId ?? null,
-        )
+      ? (t: number) => formatMatchMinute(t, cfg.matchTimeline!.periods, matchScope)
       : cfg.formatTime
+    const effectiveFormatTimeExact = cfg.matchTimeline?.periods.length
+      ? (t: number) => formatMatchMinute(t, cfg.matchTimeline!.periods, matchScope, true)
+      : cfg.formatTime
+    // Align time axis labels to kickoff-relative round intervals
+    let matchAlignBase: number | undefined
+    if (cfg.matchTimeline?.periods.length) {
+      const periods = cfg.matchTimeline.periods
+      if (matchScope) {
+        const scopePeriod = periods.find(p => p.id === matchScope)
+        matchAlignBase = scopePeriod?.kickoff ?? periods[0].kickoff
+      } else {
+        matchAlignBase = periods[0].kickoff
+      }
+    }
 
     const layout: ChartLayout = {
       w, h, pad,
@@ -1783,13 +1794,13 @@ export function useLivelineEngine(
       hoverTime: drawHoverTime,
       hoverEntries,
       scrubAmount: scrubAmountRef.current,
-      windowSecs,
+      windowSecs: matchFrozen ? effectiveRightEdge - effectiveLeftEdge : windowSecs,
       formatValue: cfg.formatValue,
       formatTime: effectiveFormatTime,
       gridState: gridStateRef.current,
       timeAxisState: timeAxisStateRef.current,
       dt,
-      targetWindowSecs: cfg.windowSecs,
+      targetWindowSecs: cfg.matchTimeline ? effectiveRightEdge - effectiveLeftEdge : cfg.windowSecs,
       tooltipY: cfg.tooltipY,
       tooltipOutline: cfg.tooltipOutline,
       chartReveal,
@@ -1799,6 +1810,8 @@ export function useLivelineEngine(
       eventLines: cfg.eventLines,
       disableGridEdgeFade: !!cfg.fixedRange,
       scoreLine,
+      formatTimeCrosshair: effectiveFormatTimeExact,
+      timeAxisAlignBase: matchAlignBase,
     })
 
     // During reverse morph (chart → loading/empty), overlay the empty text
@@ -1907,13 +1920,23 @@ export function useLivelineEngine(
     displayMaxRef.current = rangeResult.displayMax
     const { minVal, maxVal, valRange } = rangeResult
 
+    const singleMatchScope = cfg.selectedPeriodId === 'full' ? null : cfg.selectedPeriodId ?? null
     const effectiveFormatTime = cfg.matchTimeline?.periods.length
-      ? (t: number) => formatMatchMinute(
-          t,
-          cfg.matchTimeline!.periods,
-          cfg.selectedPeriodId === 'full' ? null : cfg.selectedPeriodId ?? null,
-        )
+      ? (t: number) => formatMatchMinute(t, cfg.matchTimeline!.periods, singleMatchScope)
       : cfg.formatTime
+    const effectiveFormatTimeExact = cfg.matchTimeline?.periods.length
+      ? (t: number) => formatMatchMinute(t, cfg.matchTimeline!.periods, singleMatchScope, true)
+      : cfg.formatTime
+    let singleMatchAlignBase: number | undefined
+    if (cfg.matchTimeline?.periods.length) {
+      const periods = cfg.matchTimeline.periods
+      if (singleMatchScope) {
+        const scopePeriod = periods.find(p => p.id === singleMatchScope)
+        singleMatchAlignBase = scopePeriod?.kickoff ?? periods[0].kickoff
+      } else {
+        singleMatchAlignBase = periods[0].kickoff
+      }
+    }
 
     const layout: ChartLayout = {
       w, h, pad,
@@ -1960,13 +1983,13 @@ export function useLivelineEngine(
       hoverValue: drawHoverValue,
       hoverTime: drawHoverTime,
       scrubAmount: scrubAmountRef.current,
-      windowSecs,
+      windowSecs: matchFrozen ? effectiveRightEdge - effectiveLeftEdge : windowSecs,
       formatValue: cfg.formatValue,
       formatTime: effectiveFormatTime,
       gridState: gridStateRef.current,
       timeAxisState: timeAxisStateRef.current,
       dt,
-      targetWindowSecs: cfg.windowSecs,
+      targetWindowSecs: cfg.matchTimeline ? effectiveRightEdge - effectiveLeftEdge : cfg.windowSecs,
       tooltipY: cfg.tooltipY,
       tooltipOutline: cfg.tooltipOutline,
       orderbookData: cfg.orderbookData,
@@ -1980,6 +2003,8 @@ export function useLivelineEngine(
       now_ms,
       eventLines: cfg.eventLines,
       disableGridEdgeFade: !!cfg.fixedRange,
+      formatTimeCrosshair: effectiveFormatTimeExact,
+      timeAxisAlignBase: singleMatchAlignBase,
     })
 
     // During morph (chart ↔ empty), overlay the gradient gap + text on
