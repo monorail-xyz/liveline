@@ -122,9 +122,10 @@ export function Liveline({
     ? (typeof degenProp === 'object' ? degenProp : {})
     : undefined
 
-  // Match timeline — derive windows from periods
+  // Match timeline — derive windows from periods, prepend caller's rolling windows
   const matchWindows = useMemo(() => {
     if (!matchTimeline?.periods.length) return null
+    const rollingWindows = (windows ?? []).map(w => ({ ...w }))
     const periodWindows = matchTimeline.periods.map(p => ({
       label: p.label,
       secs: p.duration,
@@ -132,8 +133,8 @@ export function Liveline({
     }))
     const totalSecs = matchTimeline.periods.reduce((sum, p) => sum + p.duration, 0)
     periodWindows.push({ label: 'Full', secs: totalSecs, _periodId: 'full' })
-    return periodWindows
-  }, [matchTimeline])
+    return [...rollingWindows, ...periodWindows]
+  }, [matchTimeline, windows])
 
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(
     matchTimeline?.periods[0]?.id ?? null
@@ -335,8 +336,8 @@ export function Liveline({
                     onClick={() => {
                       setActiveWindowSecs(w.secs)
                       onWindowChange?.(w.secs)
-                      if (matchTimeline && (w as any)._periodId) {
-                        setSelectedPeriodId((w as any)._periodId)
+                      if (matchTimeline) {
+                        setSelectedPeriodId((w as any)._periodId ?? null)
                       }
                     }}
                     style={{
