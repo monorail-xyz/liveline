@@ -67,14 +67,6 @@ export function formatMatchMinute(
   const elapsedMin = elapsed / 60
   const nominalMin = period.duration / 60
 
-  if (scopeId) {
-    if (elapsedMin <= nominalMin) {
-      return fmt(elapsedMin)
-    }
-    const stoppage = Math.ceil(elapsedMin - nominalMin)
-    return `${Math.floor(nominalMin)}+${stoppage}'`
-  }
-
   let cumulativeBase = 0
   for (const p of periods) {
     if (p.id === period.id) break

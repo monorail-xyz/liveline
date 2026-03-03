@@ -70,7 +70,7 @@ export function Liveline({
   const containerRef = useRef<HTMLDivElement>(null)
   const valueDisplayRef = useRef<HTMLSpanElement>(null)
   const windowBarRef = useRef<HTMLDivElement>(null)
-  const windowBtnRefs = useRef<Map<number, HTMLButtonElement>>(new Map())
+  const windowBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number } | null>(null)
   const modeBarRef = useRef<HTMLDivElement>(null)
   const modeBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
@@ -156,7 +156,14 @@ export function Liveline({
 
   const effectiveWindows = matchWindows ?? windows
 
-  // Window buttons state
+  // Window buttons state — use a unique key per button (_periodId for match windows, secs for rolling)
+  const getWindowKey = (w: { secs: number; _periodId?: string }) => (w as any)._periodId ?? `secs:${w.secs}`
+  const [activeWindowKey, setActiveWindowKey] = useState(() => {
+    // Default to the initially selected period if match timeline is active
+    if (matchTimeline?.periods.length) return matchTimeline.periods[0].id
+    if (windows && windows.length > 0) return getWindowKey(windows[0])
+    return `secs:${windowSecs}`
+  })
   const [activeWindowSecs, setActiveWindowSecs] = useState(
     windows && windows.length > 0 ? windows[0].secs : windowSecs
   )
@@ -165,7 +172,7 @@ export function Liveline({
   // Measure active window button for sliding indicator
   useLayoutEffect(() => {
     if (!windows || windows.length === 0) return
-    const btn = windowBtnRefs.current.get(activeWindowSecs)
+    const btn = windowBtnRefs.current.get(activeWindowKey)
     const bar = windowBarRef.current
     if (btn && bar) {
       const barRect = bar.getBoundingClientRect()
@@ -175,7 +182,7 @@ export function Liveline({
         width: btnRect.width,
       })
     }
-  }, [activeWindowSecs, windows])
+  }, [activeWindowKey, windows])
 
   // Measure active mode button for sliding indicator
   const activeMode = lineMode ? 'line' : 'candle'
@@ -325,15 +332,17 @@ export function Liveline({
                 }} />
               )}
               {effectiveWindows.map((w) => {
-                const isActive = w.secs === activeWindowSecs
+                const wKey = getWindowKey(w)
+                const isActive = wKey === activeWindowKey
                 return (
                   <button
-                    key={(w as any)._periodId ?? w.secs}
+                    key={wKey}
                     ref={(el) => {
-                      if (el) windowBtnRefs.current.set(w.secs, el)
-                      else windowBtnRefs.current.delete(w.secs)
+                      if (el) windowBtnRefs.current.set(wKey, el)
+                      else windowBtnRefs.current.delete(wKey)
                     }}
                     onClick={() => {
+                      setActiveWindowKey(wKey)
                       setActiveWindowSecs(w.secs)
                       onWindowChange?.(w.secs)
                       if (matchTimeline) {

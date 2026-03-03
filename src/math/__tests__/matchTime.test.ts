@@ -70,12 +70,12 @@ describe('formatMatchMinute (scoped to period)', () => {
     expect(formatMatchMinute(1000 + 600, periods, '1H')).toBe("10'")
   })
 
-  it('shows period-relative minutes when scoped to 2H (starts at 0)', () => {
-    expect(formatMatchMinute(5000 + 600, periods, '2H')).toBe("10'")
+  it('shows cumulative minutes when scoped to 2H (starts at 45)', () => {
+    expect(formatMatchMinute(5000 + 600, periods, '2H')).toBe("55'")
   })
 
-  it('shows stoppage relative to period nominal', () => {
-    expect(formatMatchMinute(5000 + 47 * 60, periods, '2H')).toBe("45+2'")
+  it('shows stoppage relative to cumulative period end', () => {
+    expect(formatMatchMinute(5000 + 47 * 60, periods, '2H')).toBe("90+2'")
   })
 })
 
@@ -121,8 +121,8 @@ describe('formatMatchMinute edge cases', () => {
     ]
     // 5 minutes into ET1 = 90 + 5 = 95'
     expect(formatMatchMinute(10000 + 300, withET, null)).toBe("95'")
-    // Scoped to ET1: just 5'
-    expect(formatMatchMinute(10000 + 300, withET, 'ET1')).toBe("5'")
+    // Scoped to ET1: cumulative 90 + 5 = 95'
+    expect(formatMatchMinute(10000 + 300, withET, 'ET1')).toBe("95'")
   })
 
   it('handles zero elapsed (exactly at kickoff)', () => {
