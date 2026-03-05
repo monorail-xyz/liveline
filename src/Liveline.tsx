@@ -146,6 +146,8 @@ export function Liveline({
     for (let i = matchTimeline.periods.length - 1; i >= 0; i--) {
       const p = matchTimeline.periods[i]
       if (now >= p.kickoff) {
+        // Period has ended (whistle blown) — not active
+        if (p.endTime && now > p.endTime) continue
         const nextKickoff = i < matchTimeline.periods.length - 1
           ? matchTimeline.periods[i + 1].kickoff : Infinity
         if (now < nextKickoff) return p.id

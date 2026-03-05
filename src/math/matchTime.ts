@@ -91,5 +91,8 @@ export function getActivePeriodId(
   now: number,
 ): string | null {
   const p = findPeriodAtTime(periods, now)
-  return p?.id ?? null
+  if (!p) return null
+  // Period has ended (whistle blown) — not active
+  if (p.endTime && now > p.endTime) return null
+  return p.id
 }

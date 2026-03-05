@@ -227,7 +227,9 @@ function formatMatchMinute(time, periods, scopeId, exact) {
 }
 function getActivePeriodId(periods, now) {
   const p = findPeriodAtTime(periods, now);
-  return p?.id ?? null;
+  if (!p) return null;
+  if (p.endTime && now > p.endTime) return null;
+  return p.id;
 }
 
 // src/math/interpolate.ts
@@ -2466,6 +2468,14 @@ function computeMatchEdges(cfg, now, windowSecs, buffer, leftEdge, rightEdge) {
   const mt = cfg.matchTimeline;
   const activePId = getActivePeriodId(mt.periods, now);
   if (cfg.selectedPeriodId === "full") {
+    const lastPeriod = mt.periods[mt.periods.length - 1];
+    if (lastPeriod.endTime && now > lastPeriod.endTime) {
+      return {
+        effectiveLeftEdge: mt.periods[0].kickoff,
+        effectiveRightEdge: lastPeriod.endTime,
+        matchFrozen: true
+      };
+    }
     return {
       effectiveLeftEdge: mt.periods[0].kickoff,
       effectiveRightEdge: now + windowSecs * buffer,
@@ -2475,6 +2485,13 @@ function computeMatchEdges(cfg, now, windowSecs, buffer, leftEdge, rightEdge) {
   const period = mt.periods.find((p) => p.id === cfg.selectedPeriodId);
   if (!period) {
     return { effectiveLeftEdge: leftEdge, effectiveRightEdge: rightEdge, matchFrozen: false };
+  }
+  if (period.endTime && now > period.endTime) {
+    return {
+      effectiveLeftEdge: period.kickoff,
+      effectiveRightEdge: period.endTime,
+      matchFrozen: true
+    };
   }
   const isLive = activePId === period.id;
   if (isLive) {
@@ -3862,6 +3879,7 @@ function Liveline({
     for (let i = matchTimeline.periods.length - 1; i >= 0; i--) {
       const p = matchTimeline.periods[i];
       if (now >= p.kickoff) {
+        if (p.endTime && now > p.endTime) continue;
         const nextKickoff = i < matchTimeline.periods.length - 1 ? matchTimeline.periods[i + 1].kickoff : Infinity;
         if (now < nextKickoff) return p.id;
       }

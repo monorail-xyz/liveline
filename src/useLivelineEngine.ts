@@ -588,6 +588,15 @@ function computeMatchEdges(
   const activePId = getActivePeriodId(mt.periods, now)
 
   if (cfg.selectedPeriodId === 'full') {
+    // If the last period has ended, freeze the full match view
+    const lastPeriod = mt.periods[mt.periods.length - 1]
+    if (lastPeriod.endTime && now > lastPeriod.endTime) {
+      return {
+        effectiveLeftEdge: mt.periods[0].kickoff,
+        effectiveRightEdge: lastPeriod.endTime,
+        matchFrozen: true,
+      }
+    }
     return {
       effectiveLeftEdge: mt.periods[0].kickoff,
       effectiveRightEdge: now + windowSecs * buffer,
@@ -600,6 +609,15 @@ function computeMatchEdges(
     return { effectiveLeftEdge: leftEdge, effectiveRightEdge: rightEdge, matchFrozen: false }
   }
 
+  // Period has ended (whistle blown) — freeze at endTime
+  if (period.endTime && now > period.endTime) {
+    return {
+      effectiveLeftEdge: period.kickoff,
+      effectiveRightEdge: period.endTime,
+      matchFrozen: true,
+    }
+  }
+
   const isLive = activePId === period.id
   if (isLive) {
     return {
@@ -609,7 +627,7 @@ function computeMatchEdges(
     }
   }
 
-  // Past period: frozen
+  // Past period without endTime: frozen using next kickoff as boundary
   const periodIdx = mt.periods.indexOf(period)
   const nextPeriod = periodIdx < mt.periods.length - 1 ? mt.periods[periodIdx + 1] : null
   const periodEnd = nextPeriod

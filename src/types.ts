@@ -31,6 +31,8 @@ export interface MatchPeriod {
   kickoff: number
   /** Nominal duration in seconds (e.g. 45*60 for a half) */
   duration: number
+  /** Unix seconds when the referee blew the whistle to end this period. When set and now > endTime, the period is frozen. */
+  endTime?: number
 }
 
 export interface MatchTimeline {
