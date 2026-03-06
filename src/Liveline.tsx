@@ -1,4 +1,4 @@
-import { useRef, useState, useLayoutEffect, useMemo, useCallback } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react'
 import type { LivelineProps, Momentum, DegenOptions } from './types'
 import { resolveTheme, resolveSeriesPalettes, SERIES_COLORS } from './theme'
 import { useLivelineEngine } from './useLivelineEngine'
@@ -155,6 +155,18 @@ export function Liveline({
     }
     return null
   }, [matchTimeline, Math.floor(Date.now() / 5000)])
+
+  // Auto-switch to the newly active period when it changes (e.g. 2H kicks off)
+  const prevActivePeriodId = useRef(activePeriodId)
+  useEffect(() => {
+    if (activePeriodId && activePeriodId !== prevActivePeriodId.current) {
+      setSelectedPeriodId(activePeriodId)
+      setActiveWindowKey(activePeriodId)
+      const period = matchTimeline?.periods.find(p => p.id === activePeriodId)
+      if (period) setActiveWindowSecs(period.duration)
+    }
+    prevActivePeriodId.current = activePeriodId
+  }, [activePeriodId, matchTimeline])
 
   const effectiveWindows = matchWindows ?? windows
 

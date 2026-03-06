@@ -3886,6 +3886,16 @@ function Liveline({
     }
     return null;
   }, [matchTimeline, Math.floor(Date.now() / 5e3)]);
+  const prevActivePeriodId = (0, import_react2.useRef)(activePeriodId);
+  (0, import_react2.useEffect)(() => {
+    if (activePeriodId && activePeriodId !== prevActivePeriodId.current) {
+      setSelectedPeriodId(activePeriodId);
+      setActiveWindowKey(activePeriodId);
+      const period = matchTimeline?.periods.find((p) => p.id === activePeriodId);
+      if (period) setActiveWindowSecs(period.duration);
+    }
+    prevActivePeriodId.current = activePeriodId;
+  }, [activePeriodId, matchTimeline]);
   const effectiveWindows = matchWindows ?? windows;
   const getWindowKey = (w) => w._periodId ?? `secs:${w.secs}`;
   const [activeWindowKey, setActiveWindowKey] = (0, import_react2.useState)(() => {

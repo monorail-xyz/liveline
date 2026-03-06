@@ -1,5 +1,5 @@
 // src/Liveline.tsx
-import { useRef as useRef2, useState, useLayoutEffect, useMemo, useCallback as useCallback2 } from "react";
+import { useRef as useRef2, useState, useEffect as useEffect2, useLayoutEffect, useMemo, useCallback as useCallback2 } from "react";
 
 // src/theme.ts
 function parseColorRgb(color) {
@@ -3859,6 +3859,16 @@ function Liveline({
     }
     return null;
   }, [matchTimeline, Math.floor(Date.now() / 5e3)]);
+  const prevActivePeriodId = useRef2(activePeriodId);
+  useEffect2(() => {
+    if (activePeriodId && activePeriodId !== prevActivePeriodId.current) {
+      setSelectedPeriodId(activePeriodId);
+      setActiveWindowKey(activePeriodId);
+      const period = matchTimeline?.periods.find((p) => p.id === activePeriodId);
+      if (period) setActiveWindowSecs(period.duration);
+    }
+    prevActivePeriodId.current = activePeriodId;
+  }, [activePeriodId, matchTimeline]);
   const effectiveWindows = matchWindows ?? windows;
   const getWindowKey = (w) => w._periodId ?? `secs:${w.secs}`;
   const [activeWindowKey, setActiveWindowKey] = useState(() => {
@@ -4262,7 +4272,7 @@ function Liveline({
 }
 
 // src/LivelineTransition.tsx
-import { useState as useState2, useEffect as useEffect2, useRef as useRef3 } from "react";
+import { useState as useState2, useEffect as useEffect3, useRef as useRef3 } from "react";
 import { jsx as jsx2 } from "react/jsx-runtime";
 function LivelineTransition({
   active,
@@ -4275,7 +4285,7 @@ function LivelineTransition({
   const [mounted, setMounted] = useState2(() => /* @__PURE__ */ new Set([active]));
   const [visible, setVisible] = useState2(active);
   const prevRef = useRef3(active);
-  useEffect2(() => {
+  useEffect3(() => {
     if (active === prevRef.current) return () => {
     };
     const oldKey = prevRef.current;
