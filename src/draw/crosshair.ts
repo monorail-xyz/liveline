@@ -65,11 +65,10 @@ export function drawCrosshair(
   const totalW = valueW + sepW + timeW
 
   // Center on crosshair, clamp to chart bounds
-  // Right edge of tooltip text aligns with the right edge of the live dot circle
   let tx = hoverX - totalW / 2
   const minX = pad.left + 4
-  const dotRightEdge = liveDotX != null ? liveDotX + 7 : layout.w - pad.right
-  const maxX = dotRightEdge - totalW
+  const chartRight = layout.w - pad.right
+  const maxX = (liveDotX != null ? Math.min(liveDotX + 7, chartRight) : chartRight) - totalW
   if (tx < minX) tx = minX
   if (tx > maxX) tx = maxX
 
@@ -183,11 +182,10 @@ export function drawMultiCrosshair(
   }
 
   // Position — center on crosshair, clamp to chart bounds
-  // Right edge of tooltip aligns with the right edge of live dots (matching single-series)
   let tx = hoverX - totalW / 2
   const minX = pad.left + 4
-  const dotRightEdge = liveDotX != null ? liveDotX + 7 : layout.w - pad.right
-  const maxX = dotRightEdge - totalW
+  const chartRight = layout.w - pad.right
+  const maxX = (liveDotX != null ? Math.min(liveDotX + 7, chartRight) : chartRight) - totalW
   if (tx < minX) tx = minX
   if (tx > maxX) tx = maxX
 

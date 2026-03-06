@@ -702,8 +702,8 @@ function drawCrosshair(ctx, layout, palette, hoverX, hoverValue, hoverTime, form
   const totalW = valueW + sepW + timeW;
   let tx = hoverX - totalW / 2;
   const minX = pad.left + 4;
-  const dotRightEdge = liveDotX != null ? liveDotX + 7 : layout.w - pad.right;
-  const maxX = dotRightEdge - totalW;
+  const chartRight = layout.w - pad.right;
+  const maxX = (liveDotX != null ? Math.min(liveDotX + 7, chartRight) : chartRight) - totalW;
   if (tx < minX) tx = minX;
   if (tx > maxX) tx = maxX;
   const ty = pad.top + (tooltipY ?? 14) + 10;
@@ -775,8 +775,8 @@ function drawMultiCrosshair(ctx, layout, palette, hoverX, hoverTime, entries, fo
   }
   let tx = hoverX - totalW / 2;
   const minX = pad.left + 4;
-  const dotRightEdge = liveDotX != null ? liveDotX + 7 : layout.w - pad.right;
-  const maxX = dotRightEdge - totalW;
+  const chartRight = layout.w - pad.right;
+  const maxX = (liveDotX != null ? Math.min(liveDotX + 7, chartRight) : chartRight) - totalW;
   if (tx < minX) tx = minX;
   if (tx > maxX) tx = maxX;
   const ty = pad.top + (tooltipY ?? 14) + 10;
