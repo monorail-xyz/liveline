@@ -39,6 +39,7 @@ interface EngineConfig {
   badgeVariant: BadgeVariant
   tooltipY: number
   tooltipOutline: boolean
+  tooltipFade: boolean
   valueMomentumColor: boolean
   valueDisplayRef?: React.RefObject<HTMLSpanElement | null>
   orderbookData?: OrderbookData
@@ -1827,6 +1828,7 @@ export function useLivelineEngine(
       primaryPalette: cfg.palette,
       eventLines: cfg.eventLines,
       disableGridEdgeFade: !!cfg.fixedRange,
+      disableCrosshairFade: matchFrozen || !cfg.tooltipFade,
       scoreLine,
       formatTimeCrosshair: effectiveFormatTimeExact,
       timeAxisAlignBase: matchAlignBase,
@@ -2021,6 +2023,7 @@ export function useLivelineEngine(
       now_ms,
       eventLines: cfg.eventLines,
       disableGridEdgeFade: !!cfg.fixedRange,
+      disableCrosshairFade: matchFrozen || !cfg.tooltipFade,
       formatTimeCrosshair: effectiveFormatTimeExact,
       timeAxisAlignBase: singleMatchAlignBase,
     })

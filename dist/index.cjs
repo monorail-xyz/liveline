@@ -1640,7 +1640,7 @@ function drawFrame(ctx, layout, palette, opts) {
   if (pts && pts.length > 0) {
     const lastPt = pts[pts.length - 1];
     let dotScrub = opts.scrubAmount;
-    if (opts.hoverX !== null && dotScrub > 0) {
+    if (opts.hoverX !== null && dotScrub > 0 && !opts.disableCrosshairFade) {
       const distToLive = lastPt[0] - opts.hoverX;
       const fadeStart = Math.min(80, layout.chartW * 0.3);
       dotScrub = distToLive < CROSSHAIR_FADE_MIN_PX ? 0 : distToLive >= fadeStart ? opts.scrubAmount : (distToLive - CROSSHAIR_FADE_MIN_PX) / (fadeStart - CROSSHAIR_FADE_MIN_PX) * opts.scrubAmount;
@@ -1700,9 +1700,14 @@ function drawFrame(ctx, layout, palette, opts) {
   ctx.restore();
   if (opts.hoverX !== null && opts.hoverValue !== null && opts.hoverTime !== null && pts && pts.length > 0) {
     const lastPt = pts[pts.length - 1];
-    const distToLive = lastPt[0] - opts.hoverX;
-    const fadeStart = Math.min(80, layout.chartW * 0.3);
-    const scrubOpacity = distToLive < CROSSHAIR_FADE_MIN_PX ? 0 : distToLive >= fadeStart ? opts.scrubAmount : (distToLive - CROSSHAIR_FADE_MIN_PX) / (fadeStart - CROSSHAIR_FADE_MIN_PX) * opts.scrubAmount;
+    let scrubOpacity;
+    if (opts.disableCrosshairFade) {
+      scrubOpacity = opts.scrubAmount;
+    } else {
+      const distToLive = lastPt[0] - opts.hoverX;
+      const fadeStart = Math.min(80, layout.chartW * 0.3);
+      scrubOpacity = distToLive < CROSSHAIR_FADE_MIN_PX ? 0 : distToLive >= fadeStart ? opts.scrubAmount : (distToLive - CROSSHAIR_FADE_MIN_PX) / (fadeStart - CROSSHAIR_FADE_MIN_PX) * opts.scrubAmount;
+    }
     if (scrubOpacity > 0.01) {
       drawCrosshair(
         ctx,
@@ -1828,9 +1833,14 @@ function drawMultiFrame(ctx, layout, opts) {
       const lastX = entry.pts[entry.pts.length - 1][0];
       if (lastX > maxLiveDotX) maxLiveDotX = lastX;
     }
-    const distToLive = maxLiveDotX - opts.hoverX;
-    const fadeStart = Math.min(80, layout.chartW * 0.3);
-    const scrubOpacity = distToLive < CROSSHAIR_FADE_MIN_PX ? 0 : distToLive >= fadeStart ? opts.scrubAmount : (distToLive - CROSSHAIR_FADE_MIN_PX) / (fadeStart - CROSSHAIR_FADE_MIN_PX) * opts.scrubAmount;
+    let scrubOpacity;
+    if (opts.disableCrosshairFade) {
+      scrubOpacity = opts.scrubAmount;
+    } else {
+      const distToLive = maxLiveDotX - opts.hoverX;
+      const fadeStart = Math.min(80, layout.chartW * 0.3);
+      scrubOpacity = distToLive < CROSSHAIR_FADE_MIN_PX ? 0 : distToLive >= fadeStart ? opts.scrubAmount : (distToLive - CROSSHAIR_FADE_MIN_PX) / (fadeStart - CROSSHAIR_FADE_MIN_PX) * opts.scrubAmount;
+    }
     if (scrubOpacity > 0.01) {
       drawMultiCrosshair(
         ctx,
@@ -3526,6 +3536,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
         primaryPalette: cfg.palette,
         eventLines: cfg.eventLines,
         disableGridEdgeFade: !!cfg.fixedRange,
+        disableCrosshairFade: matchFrozen || !cfg.tooltipFade,
         scoreLine,
         formatTimeCrosshair: effectiveFormatTimeExact,
         timeAxisAlignBase: matchAlignBase
@@ -3705,6 +3716,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
         now_ms,
         eventLines: cfg.eventLines,
         disableGridEdgeFade: !!cfg.fixedRange,
+        disableCrosshairFade: matchFrozen || !cfg.tooltipFade,
         formatTimeCrosshair: effectiveFormatTimeExact,
         timeAxisAlignBase: singleMatchAlignBase
       });
@@ -3791,6 +3803,7 @@ function Liveline({
   windowStyle,
   tooltipY = 14,
   tooltipOutline = true,
+  tooltipFade = true,
   orderbook,
   referenceLine,
   formatValue = defaultFormatValue,
@@ -3976,6 +3989,7 @@ function Liveline({
     badgeVariant,
     tooltipY,
     tooltipOutline,
+    tooltipFade,
     valueMomentumColor,
     valueDisplayRef: showValue ? valueDisplayRef : void 0,
     orderbookData: orderbook,

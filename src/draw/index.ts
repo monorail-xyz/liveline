@@ -67,6 +67,8 @@ export interface DrawOptions {
   formatTimeCrosshair?: (t: number) => string
   /** Align time axis labels to round multiples relative to this base (e.g. kickoff time). */
   timeAxisAlignBase?: number
+  /** When true, crosshair stays at full opacity near the right edge (no fade toward live dot). */
+  disableCrosshairFade?: boolean
 }
 
 /**
@@ -160,7 +162,7 @@ export function drawFrame(
 
     // 5. Dot — dims during scrub, fades in with reveal (0.3 → 1.0)
     let dotScrub = opts.scrubAmount
-    if (opts.hoverX !== null && dotScrub > 0) {
+    if (opts.hoverX !== null && dotScrub > 0 && !opts.disableCrosshairFade) {
       const distToLive = lastPt[0] - opts.hoverX
       const fadeStart = Math.min(80, layout.chartW * 0.3)
       dotScrub = distToLive < CROSSHAIR_FADE_MIN_PX ? 0
@@ -217,14 +219,19 @@ export function drawFrame(
   ctx.fillRect(0, 0, layout.pad.left + fadeW, layout.h)
   ctx.restore()
 
-  // 8. Crosshair — fade out well before reaching live dot
+  // 8. Crosshair — fade out well before reaching live dot (unless fade disabled)
   if (opts.hoverX !== null && opts.hoverValue !== null && opts.hoverTime !== null && pts && pts.length > 0) {
     const lastPt = pts[pts.length - 1]
-    const distToLive = lastPt[0] - opts.hoverX
-    const fadeStart = Math.min(80, layout.chartW * 0.3)
-    const scrubOpacity = distToLive < CROSSHAIR_FADE_MIN_PX ? 0
-      : distToLive >= fadeStart ? opts.scrubAmount
-      : ((distToLive - CROSSHAIR_FADE_MIN_PX) / (fadeStart - CROSSHAIR_FADE_MIN_PX)) * opts.scrubAmount
+    let scrubOpacity: number
+    if (opts.disableCrosshairFade) {
+      scrubOpacity = opts.scrubAmount
+    } else {
+      const distToLive = lastPt[0] - opts.hoverX
+      const fadeStart = Math.min(80, layout.chartW * 0.3)
+      scrubOpacity = distToLive < CROSSHAIR_FADE_MIN_PX ? 0
+        : distToLive >= fadeStart ? opts.scrubAmount
+        : ((distToLive - CROSSHAIR_FADE_MIN_PX) / (fadeStart - CROSSHAIR_FADE_MIN_PX)) * opts.scrubAmount
+    }
 
     if (scrubOpacity > 0.01) {
       drawCrosshair(
@@ -285,6 +292,7 @@ export interface MultiSeriesDrawOptions {
   scoreLine?: string
   formatTimeCrosshair?: (t: number) => string
   timeAxisAlignBase?: number
+  disableCrosshairFade?: boolean
 }
 
 /**
@@ -420,11 +428,16 @@ export function drawMultiFrame(
       if (lastX > maxLiveDotX) maxLiveDotX = lastX
     }
 
-    const distToLive = maxLiveDotX - opts.hoverX
-    const fadeStart = Math.min(80, layout.chartW * 0.3)
-    const scrubOpacity = distToLive < CROSSHAIR_FADE_MIN_PX ? 0
-      : distToLive >= fadeStart ? opts.scrubAmount
-      : ((distToLive - CROSSHAIR_FADE_MIN_PX) / (fadeStart - CROSSHAIR_FADE_MIN_PX)) * opts.scrubAmount
+    let scrubOpacity: number
+    if (opts.disableCrosshairFade) {
+      scrubOpacity = opts.scrubAmount
+    } else {
+      const distToLive = maxLiveDotX - opts.hoverX
+      const fadeStart = Math.min(80, layout.chartW * 0.3)
+      scrubOpacity = distToLive < CROSSHAIR_FADE_MIN_PX ? 0
+        : distToLive >= fadeStart ? opts.scrubAmount
+        : ((distToLive - CROSSHAIR_FADE_MIN_PX) / (fadeStart - CROSSHAIR_FADE_MIN_PX)) * opts.scrubAmount
+    }
 
     if (scrubOpacity > 0.01) {
       drawMultiCrosshair(
