@@ -171,6 +171,9 @@ export interface LivelineProps {
   onSeriesToggle?: (id: string, visible: boolean) => void  // Multi-series toggle callback
   seriesToggleCompact?: boolean  // Show only colored dots (no labels) in series toggle (default: false)
 
+  /** Image URL rendered centered behind the chart (below the transparent canvas). */
+  backgroundImage?: string
+
   className?: string
   style?: CSSProperties
 }

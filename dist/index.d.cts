@@ -138,6 +138,8 @@ interface LivelineProps {
     onModeChange?: (mode: 'line' | 'candle') => void;
     onSeriesToggle?: (id: string, visible: boolean) => void;
     seriesToggleCompact?: boolean;
+    /** Image URL rendered centered behind the chart (below the transparent canvas). */
+    backgroundImage?: string;
     className?: string;
     style?: CSSProperties;
 }
@@ -149,7 +151,7 @@ interface CandlePoint {
     close: number;
 }
 
-declare function Liveline({ data, value, series: seriesProp, theme, color, window: windowSecs, grid, badge, momentum, fill, scrub, loading, paused, emptyText, exaggerate, degen: degenProp, badgeTail, badgeVariant, showValue, valueMomentumColor, windows, onWindowChange, windowStyle, tooltipY, tooltipOutline, orderbook, referenceLine, formatValue, formatTime, lerpSpeed, padding: paddingOverride, onHover, cursor, pulse, mode, candles, candleWidth, liveCandle, lineMode, lineData, lineValue, onModeChange, onSeriesToggle, seriesToggleCompact, fixedRange, eventLines, scoreEvents, scoreLabels, matchTimeline, className, style, }: LivelineProps): react_jsx_runtime.JSX.Element;
+declare function Liveline({ data, value, series: seriesProp, theme, color, window: windowSecs, grid, badge, momentum, fill, scrub, loading, paused, emptyText, exaggerate, degen: degenProp, badgeTail, badgeVariant, showValue, valueMomentumColor, windows, onWindowChange, windowStyle, tooltipY, tooltipOutline, orderbook, referenceLine, formatValue, formatTime, lerpSpeed, padding: paddingOverride, onHover, cursor, pulse, mode, candles, candleWidth, liveCandle, lineMode, lineData, lineValue, onModeChange, onSeriesToggle, seriesToggleCompact, fixedRange, eventLines, scoreEvents, scoreLabels, matchTimeline, backgroundImage, className, style, }: LivelineProps): react_jsx_runtime.JSX.Element;
 
 interface LivelineTransitionProps {
     /** Key of the active child to display. Must match a child's `key` prop. */

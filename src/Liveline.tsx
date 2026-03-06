@@ -63,6 +63,7 @@ export function Liveline({
   scoreEvents,
   scoreLabels,
   matchTimeline,
+  backgroundImage,
   className,
   style,
 }: LivelineProps) {
@@ -557,9 +558,26 @@ export function Liveline({
           ...style,
         }}
       >
+        {backgroundImage && (
+          <img
+            src={backgroundImage}
+            alt=""
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              maxWidth: '80%',
+              maxHeight: '80%',
+              objectFit: 'contain',
+              pointerEvents: 'none',
+              zIndex: 0,
+            }}
+          />
+        )}
         <canvas
           ref={canvasRef}
-          style={{ display: 'block', cursor: cursorStyle }}
+          style={{ display: 'block', cursor: cursorStyle, position: 'relative', zIndex: 1 }}
         />
       </div>
     </>
