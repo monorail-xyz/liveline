@@ -4309,12 +4309,13 @@ function Liveline({
               alt: "",
               style: {
                 position: "absolute",
-                top: "50%",
+                top: "40%",
                 left: "50%",
                 transform: "translate(-50%, -50%)",
-                maxWidth: "80%",
+                maxWidth: "200px",
                 maxHeight: "80%",
                 objectFit: "contain",
+                opacity: 0.1,
                 pointerEvents: "none",
                 zIndex: 0
               }

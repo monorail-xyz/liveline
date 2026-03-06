@@ -1,17 +1,17 @@
-import { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react'
-import type { LivelineProps, Momentum, DegenOptions } from './types'
-import { resolveTheme, resolveSeriesPalettes, SERIES_COLORS } from './theme'
-import { useLivelineEngine } from './useLivelineEngine'
+import { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
+import type { LivelineProps, Momentum, DegenOptions } from './types';
+import { resolveTheme, resolveSeriesPalettes, SERIES_COLORS } from './theme';
+import { useLivelineEngine } from './useLivelineEngine';
 
-const defaultFormatValue = (v: number) => v.toFixed(2)
+const defaultFormatValue = (v: number) => v.toFixed(2);
 
 const defaultFormatTime = (t: number) => {
-  const d = new Date(t * 1000)
-  const h = d.getHours().toString().padStart(2, '0')
-  const m = d.getMinutes().toString().padStart(2, '0')
-  const s = d.getSeconds().toString().padStart(2, '0')
-  return `${h}:${m}:${s}`
-}
+  const d = new Date(t * 1000);
+  const h = d.getHours().toString().padStart(2, '0');
+  const m = d.getMinutes().toString().padStart(2, '0');
+  const s = d.getSeconds().toString().padStart(2, '0');
+  return `${h}:${m}:${s}`;
+};
 
 export function Liveline({
   data,
@@ -68,174 +68,174 @@ export function Liveline({
   className,
   style,
 }: LivelineProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const valueDisplayRef = useRef<HTMLSpanElement>(null)
-  const windowBarRef = useRef<HTMLDivElement>(null)
-  const windowBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
-  const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number } | null>(null)
-  const modeBarRef = useRef<HTMLDivElement>(null)
-  const modeBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
-  const [modeIndicatorStyle, setModeIndicatorStyle] = useState<{ left: number; width: number } | null>(null)
-  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set())
-  const lastSeriesPropRef = useRef(seriesProp)
-  if (seriesProp && seriesProp.length > 0) lastSeriesPropRef.current = seriesProp
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const valueDisplayRef = useRef<HTMLSpanElement>(null);
+  const windowBarRef = useRef<HTMLDivElement>(null);
+  const windowBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number; } | null>(null);
+  const modeBarRef = useRef<HTMLDivElement>(null);
+  const modeBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [modeIndicatorStyle, setModeIndicatorStyle] = useState<{ left: number; width: number; } | null>(null);
+  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+  const lastSeriesPropRef = useRef(seriesProp);
+  if (seriesProp && seriesProp.length > 0) lastSeriesPropRef.current = seriesProp;
 
-  const palette = useMemo(() => resolveTheme(color, theme), [color, theme])
-  const isDark = theme === 'dark'
-  const isMultiSeries = seriesProp != null && seriesProp.length > 0
-  const showSeriesToggle = (lastSeriesPropRef.current?.length ?? 0) > 1
+  const palette = useMemo(() => resolveTheme(color, theme), [color, theme]);
+  const isDark = theme === 'dark';
+  const isMultiSeries = seriesProp != null && seriesProp.length > 0;
+  const showSeriesToggle = (lastSeriesPropRef.current?.length ?? 0) > 1;
 
   // Per-series palettes (memoized on series ids + colors + theme)
   const seriesPalettes = useMemo(() => {
-    if (!seriesProp || seriesProp.length === 0) return null
-    return resolveSeriesPalettes(seriesProp, theme)
-  }, [seriesProp, theme])
+    if (!seriesProp || seriesProp.length === 0) return null;
+    return resolveSeriesPalettes(seriesProp, theme);
+  }, [seriesProp, theme]);
 
   // Normalized multi-series config for the engine
   const multiSeries = useMemo(() => {
-    if (!seriesProp || !seriesPalettes) return undefined
+    if (!seriesProp || !seriesPalettes) return undefined;
     return seriesProp.map((s, i) => ({
       id: s.id,
       data: s.data,
       value: s.value,
       palette: seriesPalettes.get(s.id) ?? resolveTheme(s.color || SERIES_COLORS[i % SERIES_COLORS.length], theme),
       label: s.label,
-    }))
-  }, [seriesProp, seriesPalettes, theme])
+    }));
+  }, [seriesProp, seriesPalettes, theme]);
 
   // Resolve momentum prop: boolean enables auto-detect, string overrides
-  const showMomentum = momentum !== false
+  const showMomentum = momentum !== false;
   const momentumOverride: Momentum | undefined =
-    typeof momentum === 'string' ? momentum : undefined
+    typeof momentum === 'string' ? momentum : undefined;
 
   const pad = {
     top: paddingOverride?.top ?? 12,
     right: paddingOverride?.right ?? 80,
     bottom: paddingOverride?.bottom ?? 28,
     left: paddingOverride?.left ?? 12,
-  }
+  };
 
   // Degen mode: explicit prop wins
   const degenEnabled = degenProp != null
     ? degenProp !== false
-    : false
+    : false;
   const degenOptions: DegenOptions | undefined = degenEnabled
     ? (typeof degenProp === 'object' ? degenProp : {})
-    : undefined
+    : undefined;
 
   // Match timeline — derive windows from periods, prepend caller's rolling windows
   const matchWindows = useMemo(() => {
-    if (!matchTimeline?.periods.length) return null
-    const rollingWindows = (windows ?? []).map(w => ({ ...w }))
+    if (!matchTimeline?.periods.length) return null;
+    const rollingWindows = (windows ?? []).map(w => ({ ...w }));
     const periodWindows = matchTimeline.periods.map(p => ({
       label: p.label,
       secs: p.duration,
       _periodId: p.id,
-    }))
-    const totalSecs = matchTimeline.periods.reduce((sum, p) => sum + p.duration, 0)
-    periodWindows.push({ label: 'Full', secs: totalSecs, _periodId: 'full' })
-    return [...rollingWindows, ...periodWindows]
-  }, [matchTimeline, windows])
+    }));
+    const totalSecs = matchTimeline.periods.reduce((sum, p) => sum + p.duration, 0);
+    periodWindows.push({ label: 'Full', secs: totalSecs, _periodId: 'full' });
+    return [...rollingWindows, ...periodWindows];
+  }, [matchTimeline, windows]);
 
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(
     matchTimeline?.periods[0]?.id ?? null
-  )
+  );
 
   const activePeriodId = useMemo(() => {
-    if (!matchTimeline?.periods.length) return null
-    const now = Date.now() / 1000
+    if (!matchTimeline?.periods.length) return null;
+    const now = Date.now() / 1000;
     for (let i = matchTimeline.periods.length - 1; i >= 0; i--) {
-      const p = matchTimeline.periods[i]
+      const p = matchTimeline.periods[i];
       if (now >= p.kickoff) {
         // Period has ended (whistle blown) — not active
-        if (p.endTime && now > p.endTime) continue
+        if (p.endTime && now > p.endTime) continue;
         const nextKickoff = i < matchTimeline.periods.length - 1
-          ? matchTimeline.periods[i + 1].kickoff : Infinity
-        if (now < nextKickoff) return p.id
+          ? matchTimeline.periods[i + 1].kickoff : Infinity;
+        if (now < nextKickoff) return p.id;
       }
     }
-    return null
-  }, [matchTimeline, Math.floor(Date.now() / 5000)])
+    return null;
+  }, [matchTimeline, Math.floor(Date.now() / 5000)]);
 
   // Auto-switch to the newly active period when it changes (e.g. 2H kicks off)
-  const prevActivePeriodId = useRef(activePeriodId)
+  const prevActivePeriodId = useRef(activePeriodId);
   useEffect(() => {
     if (activePeriodId && activePeriodId !== prevActivePeriodId.current) {
-      setSelectedPeriodId(activePeriodId)
-      setActiveWindowKey(activePeriodId)
-      const period = matchTimeline?.periods.find(p => p.id === activePeriodId)
-      if (period) setActiveWindowSecs(period.duration)
+      setSelectedPeriodId(activePeriodId);
+      setActiveWindowKey(activePeriodId);
+      const period = matchTimeline?.periods.find(p => p.id === activePeriodId);
+      if (period) setActiveWindowSecs(period.duration);
     }
-    prevActivePeriodId.current = activePeriodId
-  }, [activePeriodId, matchTimeline])
+    prevActivePeriodId.current = activePeriodId;
+  }, [activePeriodId, matchTimeline]);
 
-  const effectiveWindows = matchWindows ?? windows
+  const effectiveWindows = matchWindows ?? windows;
 
   // Window buttons state — use a unique key per button (_periodId for match windows, secs for rolling)
-  const getWindowKey = (w: { secs: number; _periodId?: string }) => (w as any)._periodId ?? `secs:${w.secs}`
+  const getWindowKey = (w: { secs: number; _periodId?: string; }) => (w as any)._periodId ?? `secs:${w.secs}`;
   const [activeWindowKey, setActiveWindowKey] = useState(() => {
     // Default to the initially selected period if match timeline is active
-    if (matchTimeline?.periods.length) return matchTimeline.periods[0].id
-    if (windows && windows.length > 0) return getWindowKey(windows[0])
-    return `secs:${windowSecs}`
-  })
+    if (matchTimeline?.periods.length) return matchTimeline.periods[0].id;
+    if (windows && windows.length > 0) return getWindowKey(windows[0]);
+    return `secs:${windowSecs}`;
+  });
   const [activeWindowSecs, setActiveWindowSecs] = useState(
     windows && windows.length > 0 ? windows[0].secs : windowSecs
-  )
-  const effectiveWindowSecs = windows ? activeWindowSecs : windowSecs
+  );
+  const effectiveWindowSecs = windows ? activeWindowSecs : windowSecs;
 
   // Measure active window button for sliding indicator
   useLayoutEffect(() => {
-    if (!windows || windows.length === 0) return
-    const btn = windowBtnRefs.current.get(activeWindowKey)
-    const bar = windowBarRef.current
+    if (!windows || windows.length === 0) return;
+    const btn = windowBtnRefs.current.get(activeWindowKey);
+    const bar = windowBarRef.current;
     if (btn && bar) {
-      const barRect = bar.getBoundingClientRect()
-      const btnRect = btn.getBoundingClientRect()
+      const barRect = bar.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
       setIndicatorStyle({
         left: btnRect.left - barRect.left,
         width: btnRect.width,
-      })
+      });
     }
-  }, [activeWindowKey, windows])
+  }, [activeWindowKey, windows]);
 
   // Measure active mode button for sliding indicator
-  const activeMode = lineMode ? 'line' : 'candle'
+  const activeMode = lineMode ? 'line' : 'candle';
   useLayoutEffect(() => {
-    if (!onModeChange) return
-    const btn = modeBtnRefs.current.get(activeMode)
-    const bar = modeBarRef.current
+    if (!onModeChange) return;
+    const btn = modeBtnRefs.current.get(activeMode);
+    const bar = modeBarRef.current;
     if (btn && bar) {
-      const barRect = bar.getBoundingClientRect()
-      const btnRect = btn.getBoundingClientRect()
+      const barRect = bar.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
       setModeIndicatorStyle({
         left: btnRect.left - barRect.left,
         width: btnRect.width,
-      })
+      });
     }
-  }, [activeMode, onModeChange])
+  }, [activeMode, onModeChange]);
 
   // Series toggle handler — prevent hiding the last visible series
   const handleSeriesToggle = useCallback((id: string) => {
     setHiddenSeries(prev => {
-      const next = new Set(prev)
+      const next = new Set(prev);
       if (next.has(id)) {
-        next.delete(id)
-        onSeriesToggle?.(id, true)
+        next.delete(id);
+        onSeriesToggle?.(id, true);
       } else {
         // Count visible series — don't hide last one
-        const totalSeries = seriesProp?.length ?? 0
-        const visibleCount = totalSeries - next.size
-        if (visibleCount <= 1) return prev
-        next.add(id)
-        onSeriesToggle?.(id, false)
+        const totalSeries = seriesProp?.length ?? 0;
+        const visibleCount = totalSeries - next.size;
+        if (visibleCount <= 1) return prev;
+        next.add(id);
+        onSeriesToggle?.(id, false);
       }
-      return next
-    })
-  }, [seriesProp?.length, onSeriesToggle])
+      return next;
+    });
+  }, [seriesProp?.length, onSeriesToggle]);
 
-  const ws = windowStyle ?? 'default'
+  const ws = windowStyle ?? 'default';
 
   useLivelineEngine(canvasRef, containerRef, {
     data,
@@ -284,12 +284,12 @@ export function Liveline({
     scoreLabels,
     matchTimeline,
     selectedPeriodId: matchTimeline ? (selectedPeriodId ?? undefined) : undefined,
-  })
+  });
 
-  const cursorStyle = scrub ? cursor : 'default'
+  const cursorStyle = scrub ? cursor : 'default';
 
-  const activeColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.55)'
-  const inactiveColor = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.22)'
+  const activeColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.55)';
+  const inactiveColor = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.22)';
 
   return (
     <>
@@ -349,21 +349,21 @@ export function Liveline({
                 }} />
               )}
               {effectiveWindows.map((w) => {
-                const wKey = getWindowKey(w)
-                const isActive = wKey === activeWindowKey
+                const wKey = getWindowKey(w);
+                const isActive = wKey === activeWindowKey;
                 return (
                   <button
                     key={wKey}
                     ref={(el) => {
-                      if (el) windowBtnRefs.current.set(wKey, el)
-                      else windowBtnRefs.current.delete(wKey)
+                      if (el) windowBtnRefs.current.set(wKey, el);
+                      else windowBtnRefs.current.delete(wKey);
                     }}
                     onClick={() => {
-                      setActiveWindowKey(wKey)
-                      setActiveWindowSecs(w.secs)
-                      onWindowChange?.(w.secs)
+                      setActiveWindowKey(wKey);
+                      setActiveWindowSecs(w.secs);
+                      onWindowChange?.(w.secs);
                       if (matchTimeline) {
-                        setSelectedPeriodId((w as any)._periodId ?? null)
+                        setSelectedPeriodId((w as any)._periodId ?? null);
                       }
                     }}
                     style={{
@@ -395,7 +395,7 @@ export function Liveline({
                       }} />
                     )}
                   </button>
-                )
+                );
               })}
             </div>
           )}
@@ -431,8 +431,8 @@ export function Liveline({
               {/* Line icon */}
               <button
                 ref={(el) => {
-                  if (el) modeBtnRefs.current.set('line', el)
-                  else modeBtnRefs.current.delete('line')
+                  if (el) modeBtnRefs.current.set('line', el);
+                  else modeBtnRefs.current.delete('line');
                 }}
                 onClick={() => onModeChange('line')}
                 style={{
@@ -460,8 +460,8 @@ export function Liveline({
               {/* Candle icon */}
               <button
                 ref={(el) => {
-                  if (el) modeBtnRefs.current.set('candle', el)
-                  else modeBtnRefs.current.delete('candle')
+                  if (el) modeBtnRefs.current.set('candle', el);
+                  else modeBtnRefs.current.delete('candle');
                 }}
                 onClick={() => onModeChange('candle')}
                 style={{
@@ -504,8 +504,8 @@ export function Liveline({
               pointerEvents: isMultiSeries ? 'auto' : 'none',
             }}>
               {(lastSeriesPropRef.current ?? []).map((s, si) => {
-                const isHidden = hiddenSeries.has(s.id)
-                const seriesColor = s.color || SERIES_COLORS[si % SERIES_COLORS.length]
+                const isHidden = hiddenSeries.has(s.id);
+                const seriesColor = s.color || SERIES_COLORS[si % SERIES_COLORS.length];
                 return (
                   <button
                     key={s.id}
@@ -543,7 +543,7 @@ export function Liveline({
                     }} />
                     {!seriesToggleCompact && (s.label ?? s.id)}
                   </button>
-                )
+                );
               })}
             </div>
           )}
@@ -566,12 +566,13 @@ export function Liveline({
             alt=""
             style={{
               position: 'absolute',
-              top: '50%',
+              top: '40%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              maxWidth: '80%',
+              maxWidth: '200px',
               maxHeight: '80%',
               objectFit: 'contain',
+              opacity: 0.1,
               pointerEvents: 'none',
               zIndex: 0,
             }}
@@ -583,5 +584,5 @@ export function Liveline({
         />
       </div>
     </>
-  )
+  );
 }
