@@ -1538,7 +1538,7 @@ function drawEventLines(ctx, layout, palette, events) {
       const pillW = textW + pillPadX * 2;
       const pillH = fontSize + pillPadY * 2;
       const pillX = x - pillW / 2;
-      const pillY = top - pillH - 4;
+      const pillY = top - pillH - 4 + (ev.labelOffset ?? 0);
       ctx.fillStyle = color + "1a";
       ctx.beginPath();
       roundRect(ctx, pillX, pillY, pillW, pillH, 4);

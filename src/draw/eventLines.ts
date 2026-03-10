@@ -47,7 +47,7 @@ export function drawEventLines(
       const pillW = textW + pillPadX * 2
       const pillH = fontSize + pillPadY * 2
       const pillX = x - pillW / 2
-      const pillY = top - pillH - 4
+      const pillY = top - pillH - 4 + (ev.labelOffset ?? 0)
 
       // Pill background
       ctx.fillStyle = color + '1a'  // ~10% opacity of the line color

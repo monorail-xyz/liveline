@@ -46,6 +46,8 @@ interface EventLine {
     dash?: [number, number];
     /** Line width in px (default: 1) */
     width?: number;
+    /** Vertical offset for the label pill in px — positive moves down (default: 0) */
+    labelOffset?: number;
 }
 interface HoverPoint {
     time: number;
