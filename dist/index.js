@@ -1,5 +1,5 @@
 // src/Liveline.tsx
-import { useRef as useRef2, useState, useEffect as useEffect2, useLayoutEffect, useMemo, useCallback as useCallback2 } from "react";
+import { useRef as useRef2, useState, useLayoutEffect, useMemo, useCallback as useCallback2 } from "react";
 
 // src/theme.ts
 function parseColorRgb(color) {
@@ -3801,6 +3801,7 @@ function Liveline({
   scoreEvents,
   scoreLabels,
   matchTimeline,
+  selectedPeriodId,
   backgroundImage,
   className,
   style
@@ -3845,50 +3846,11 @@ function Liveline({
   };
   const degenEnabled = degenProp != null ? degenProp !== false : false;
   const degenOptions = degenEnabled ? typeof degenProp === "object" ? degenProp : {} : void 0;
-  const matchWindows = useMemo(() => {
-    if (!matchTimeline?.periods.length) return null;
-    const rollingWindows = (windows ?? []).map((w) => ({ ...w }));
-    const periodWindows = matchTimeline.periods.map((p) => ({
-      label: p.label,
-      secs: p.duration,
-      _periodId: p.id
-    }));
-    const totalSecs = matchTimeline.periods.reduce((sum, p) => sum + p.duration, 0);
-    periodWindows.push({ label: "Full", secs: totalSecs, _periodId: "full" });
-    return [...rollingWindows, ...periodWindows];
-  }, [matchTimeline, windows]);
-  const [selectedPeriodId, setSelectedPeriodId] = useState(
-    matchTimeline?.periods[0]?.id ?? null
-  );
-  const activePeriodId = useMemo(() => {
-    if (!matchTimeline?.periods.length) return null;
-    const now = Date.now() / 1e3;
-    for (let i = matchTimeline.periods.length - 1; i >= 0; i--) {
-      const p = matchTimeline.periods[i];
-      if (now >= p.kickoff) {
-        if (p.endTime && now > p.endTime) continue;
-        const nextKickoff = i < matchTimeline.periods.length - 1 ? matchTimeline.periods[i + 1].kickoff : Infinity;
-        if (now < nextKickoff) return p.id;
-      }
-    }
-    return null;
-  }, [matchTimeline, Math.floor(Date.now() / 5e3)]);
-  const prevActivePeriodId = useRef2(activePeriodId);
-  useEffect2(() => {
-    if (activePeriodId && activePeriodId !== prevActivePeriodId.current) {
-      setSelectedPeriodId(activePeriodId);
-      setActiveWindowKey(activePeriodId);
-      const period = matchTimeline?.periods.find((p) => p.id === activePeriodId);
-      if (period) setActiveWindowSecs(period.duration);
-    }
-    prevActivePeriodId.current = activePeriodId;
-  }, [activePeriodId, matchTimeline]);
-  const effectiveWindows = matchWindows ?? windows;
-  const getWindowKey = (w) => w._periodId ?? `secs:${w.secs}`;
+  const effectiveWindows = windows;
+  const getWindowKey = (w) => `${w.secs}:${w.label ?? ""}`;
   const [activeWindowKey, setActiveWindowKey] = useState(() => {
-    if (matchTimeline?.periods.length) return matchTimeline.periods[0].id;
     if (windows && windows.length > 0) return getWindowKey(windows[0]);
-    return `secs:${windowSecs}`;
+    return `${windowSecs}:`;
   });
   const [activeWindowSecs, setActiveWindowSecs] = useState(
     windows && windows.length > 0 ? windows[0].secs : windowSecs
@@ -4037,7 +3999,7 @@ function Liveline({
             effectiveWindows.map((w) => {
               const wKey = getWindowKey(w);
               const isActive = wKey === activeWindowKey;
-              return /* @__PURE__ */ jsxs(
+              return /* @__PURE__ */ jsx(
                 "button",
                 {
                   ref: (el) => {
@@ -4048,9 +4010,6 @@ function Liveline({
                     setActiveWindowKey(wKey);
                     setActiveWindowSecs(w.secs);
                     onWindowChange?.(w.secs);
-                    if (matchTimeline) {
-                      setSelectedPeriodId(w._periodId ?? null);
-                    }
                   },
                   style: {
                     position: "relative",
@@ -4067,18 +4026,7 @@ function Liveline({
                     transition: "color 0.2s, background 0.15s",
                     lineHeight: "16px"
                   },
-                  children: [
-                    w.label,
-                    matchTimeline && w._periodId === activePeriodId && /* @__PURE__ */ jsx("span", { style: {
-                      display: "inline-block",
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: "#22c55e",
-                      marginLeft: 4,
-                      animation: "liveline-pulse 2s ease-in-out infinite"
-                    } })
-                  ]
+                  children: w.label
                 },
                 wKey
               );
@@ -4308,7 +4256,7 @@ function Liveline({
 }
 
 // src/LivelineTransition.tsx
-import { useState as useState2, useEffect as useEffect3, useRef as useRef3 } from "react";
+import { useState as useState2, useEffect as useEffect2, useRef as useRef3 } from "react";
 import { jsx as jsx2 } from "react/jsx-runtime";
 function LivelineTransition({
   active,
@@ -4321,7 +4269,7 @@ function LivelineTransition({
   const [mounted, setMounted] = useState2(() => /* @__PURE__ */ new Set([active]));
   const [visible, setVisible] = useState2(active);
   const prevRef = useRef3(active);
-  useEffect3(() => {
+  useEffect2(() => {
     if (active === prevRef.current) return () => {
     };
     const oldKey = prevRef.current;

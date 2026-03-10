@@ -149,6 +149,8 @@ export interface LivelineProps {
   scoreLabels?: { home: string; away: string }
   /** Match timeline — enables period-aware windows, match-minute labels */
   matchTimeline?: MatchTimeline
+  /** Which period to display (e.g. '1H', '2H', 'full'). Controlled by the caller. */
+  selectedPeriodId?: string
 
   // Optional
   referenceLine?: ReferenceLine

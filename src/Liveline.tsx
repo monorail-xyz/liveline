@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
+import { useRef, useState, useLayoutEffect, useMemo, useCallback } from 'react';
 import type { LivelineProps, Momentum, DegenOptions } from './types';
 import { resolveTheme, resolveSeriesPalettes, SERIES_COLORS } from './theme';
 import { useLivelineEngine } from './useLivelineEngine';
@@ -64,6 +64,7 @@ export function Liveline({
   scoreEvents,
   scoreLabels,
   matchTimeline,
+  selectedPeriodId,
   backgroundImage,
   className,
   style,
@@ -124,61 +125,13 @@ export function Liveline({
     ? (typeof degenProp === 'object' ? degenProp : {})
     : undefined;
 
-  // Match timeline — derive windows from periods, prepend caller's rolling windows
-  const matchWindows = useMemo(() => {
-    if (!matchTimeline?.periods.length) return null;
-    const rollingWindows = (windows ?? []).map(w => ({ ...w }));
-    const periodWindows = matchTimeline.periods.map(p => ({
-      label: p.label,
-      secs: p.duration,
-      _periodId: p.id,
-    }));
-    const totalSecs = matchTimeline.periods.reduce((sum, p) => sum + p.duration, 0);
-    periodWindows.push({ label: 'Full', secs: totalSecs, _periodId: 'full' });
-    return [...rollingWindows, ...periodWindows];
-  }, [matchTimeline, windows]);
+  const effectiveWindows = windows;
 
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(
-    matchTimeline?.periods[0]?.id ?? null
-  );
-
-  const activePeriodId = useMemo(() => {
-    if (!matchTimeline?.periods.length) return null;
-    const now = Date.now() / 1000;
-    for (let i = matchTimeline.periods.length - 1; i >= 0; i--) {
-      const p = matchTimeline.periods[i];
-      if (now >= p.kickoff) {
-        // Period has ended (whistle blown) — not active
-        if (p.endTime && now > p.endTime) continue;
-        const nextKickoff = i < matchTimeline.periods.length - 1
-          ? matchTimeline.periods[i + 1].kickoff : Infinity;
-        if (now < nextKickoff) return p.id;
-      }
-    }
-    return null;
-  }, [matchTimeline, Math.floor(Date.now() / 5000)]);
-
-  // Auto-switch to the newly active period when it changes (e.g. 2H kicks off)
-  const prevActivePeriodId = useRef(activePeriodId);
-  useEffect(() => {
-    if (activePeriodId && activePeriodId !== prevActivePeriodId.current) {
-      setSelectedPeriodId(activePeriodId);
-      setActiveWindowKey(activePeriodId);
-      const period = matchTimeline?.periods.find(p => p.id === activePeriodId);
-      if (period) setActiveWindowSecs(period.duration);
-    }
-    prevActivePeriodId.current = activePeriodId;
-  }, [activePeriodId, matchTimeline]);
-
-  const effectiveWindows = matchWindows ?? windows;
-
-  // Window buttons state — use a unique key per button (_periodId for match windows, secs for rolling)
-  const getWindowKey = (w: { secs: number; _periodId?: string; }) => (w as any)._periodId ?? `secs:${w.secs}`;
+  // Window buttons state
+  const getWindowKey = (w: { secs: number; label?: string }) => `${w.secs}:${w.label ?? ''}`;
   const [activeWindowKey, setActiveWindowKey] = useState(() => {
-    // Default to the initially selected period if match timeline is active
-    if (matchTimeline?.periods.length) return matchTimeline.periods[0].id;
     if (windows && windows.length > 0) return getWindowKey(windows[0]);
-    return `secs:${windowSecs}`;
+    return `${windowSecs}:`;
   });
   const [activeWindowSecs, setActiveWindowSecs] = useState(
     windows && windows.length > 0 ? windows[0].secs : windowSecs
@@ -362,9 +315,6 @@ export function Liveline({
                       setActiveWindowKey(wKey);
                       setActiveWindowSecs(w.secs);
                       onWindowChange?.(w.secs);
-                      if (matchTimeline) {
-                        setSelectedPeriodId((w as any)._periodId ?? null);
-                      }
                     }}
                     style={{
                       position: 'relative',
@@ -383,17 +333,6 @@ export function Liveline({
                     }}
                   >
                     {w.label}
-                    {matchTimeline && (w as any)._periodId === activePeriodId && (
-                      <span style={{
-                        display: 'inline-block',
-                        width: 5,
-                        height: 5,
-                        borderRadius: '50%',
-                        background: '#22c55e',
-                        marginLeft: 4,
-                        animation: 'liveline-pulse 2s ease-in-out infinite',
-                      }} />
-                    )}
                   </button>
                 );
               })}

@@ -3828,6 +3828,7 @@ function Liveline({
   scoreEvents,
   scoreLabels,
   matchTimeline,
+  selectedPeriodId,
   backgroundImage,
   className,
   style
@@ -3872,50 +3873,11 @@ function Liveline({
   };
   const degenEnabled = degenProp != null ? degenProp !== false : false;
   const degenOptions = degenEnabled ? typeof degenProp === "object" ? degenProp : {} : void 0;
-  const matchWindows = (0, import_react2.useMemo)(() => {
-    if (!matchTimeline?.periods.length) return null;
-    const rollingWindows = (windows ?? []).map((w) => ({ ...w }));
-    const periodWindows = matchTimeline.periods.map((p) => ({
-      label: p.label,
-      secs: p.duration,
-      _periodId: p.id
-    }));
-    const totalSecs = matchTimeline.periods.reduce((sum, p) => sum + p.duration, 0);
-    periodWindows.push({ label: "Full", secs: totalSecs, _periodId: "full" });
-    return [...rollingWindows, ...periodWindows];
-  }, [matchTimeline, windows]);
-  const [selectedPeriodId, setSelectedPeriodId] = (0, import_react2.useState)(
-    matchTimeline?.periods[0]?.id ?? null
-  );
-  const activePeriodId = (0, import_react2.useMemo)(() => {
-    if (!matchTimeline?.periods.length) return null;
-    const now = Date.now() / 1e3;
-    for (let i = matchTimeline.periods.length - 1; i >= 0; i--) {
-      const p = matchTimeline.periods[i];
-      if (now >= p.kickoff) {
-        if (p.endTime && now > p.endTime) continue;
-        const nextKickoff = i < matchTimeline.periods.length - 1 ? matchTimeline.periods[i + 1].kickoff : Infinity;
-        if (now < nextKickoff) return p.id;
-      }
-    }
-    return null;
-  }, [matchTimeline, Math.floor(Date.now() / 5e3)]);
-  const prevActivePeriodId = (0, import_react2.useRef)(activePeriodId);
-  (0, import_react2.useEffect)(() => {
-    if (activePeriodId && activePeriodId !== prevActivePeriodId.current) {
-      setSelectedPeriodId(activePeriodId);
-      setActiveWindowKey(activePeriodId);
-      const period = matchTimeline?.periods.find((p) => p.id === activePeriodId);
-      if (period) setActiveWindowSecs(period.duration);
-    }
-    prevActivePeriodId.current = activePeriodId;
-  }, [activePeriodId, matchTimeline]);
-  const effectiveWindows = matchWindows ?? windows;
-  const getWindowKey = (w) => w._periodId ?? `secs:${w.secs}`;
+  const effectiveWindows = windows;
+  const getWindowKey = (w) => `${w.secs}:${w.label ?? ""}`;
   const [activeWindowKey, setActiveWindowKey] = (0, import_react2.useState)(() => {
-    if (matchTimeline?.periods.length) return matchTimeline.periods[0].id;
     if (windows && windows.length > 0) return getWindowKey(windows[0]);
-    return `secs:${windowSecs}`;
+    return `${windowSecs}:`;
   });
   const [activeWindowSecs, setActiveWindowSecs] = (0, import_react2.useState)(
     windows && windows.length > 0 ? windows[0].secs : windowSecs
@@ -4064,7 +4026,7 @@ function Liveline({
             effectiveWindows.map((w) => {
               const wKey = getWindowKey(w);
               const isActive = wKey === activeWindowKey;
-              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                 "button",
                 {
                   ref: (el) => {
@@ -4075,9 +4037,6 @@ function Liveline({
                     setActiveWindowKey(wKey);
                     setActiveWindowSecs(w.secs);
                     onWindowChange?.(w.secs);
-                    if (matchTimeline) {
-                      setSelectedPeriodId(w._periodId ?? null);
-                    }
                   },
                   style: {
                     position: "relative",
@@ -4094,18 +4053,7 @@ function Liveline({
                     transition: "color 0.2s, background 0.15s",
                     lineHeight: "16px"
                   },
-                  children: [
-                    w.label,
-                    matchTimeline && w._periodId === activePeriodId && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: {
-                      display: "inline-block",
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: "#22c55e",
-                      marginLeft: 4,
-                      animation: "liveline-pulse 2s ease-in-out infinite"
-                    } })
-                  ]
+                  children: w.label
                 },
                 wKey
               );
