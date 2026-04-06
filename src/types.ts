@@ -175,6 +175,7 @@ export interface LivelineProps {
   onModeChange?: (mode: 'line' | 'candle') => void  // Built-in toggle callback
   onSeriesToggle?: (id: string, visible: boolean) => void  // Multi-series toggle callback
   seriesToggleCompact?: boolean  // Show only colored dots (no labels) in series toggle (default: false)
+  showLegend?: boolean           // Show the series legend/toggle (default: true)
 
   /** Image URL rendered centered behind the chart (below the transparent canvas). */
   backgroundImage?: string

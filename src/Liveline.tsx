@@ -59,6 +59,7 @@ export function Liveline({
   onModeChange,
   onSeriesToggle,
   seriesToggleCompact = false,
+  showLegend = true,
   fixedRange,
   eventLines,
   scoreEvents,
@@ -85,7 +86,7 @@ export function Liveline({
   const palette = useMemo(() => resolveTheme(color, theme), [color, theme]);
   const isDark = theme === 'dark';
   const isMultiSeries = seriesProp != null && seriesProp.length > 0;
-  const showSeriesToggle = (lastSeriesPropRef.current?.length ?? 0) > 1;
+  const showSeriesToggle = showLegend && (lastSeriesPropRef.current?.length ?? 0) > 1;
 
   // Per-series palettes (memoized on series ids + colors + theme)
   const seriesPalettes = useMemo(() => {
