@@ -1543,6 +1543,52 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+// src/draw/seriesMarkers.ts
+var SIZE = 5;
+var GAP = 2;
+function drawSeriesMarkers(ctx, layout, markers) {
+  const { toX, toY, pad, w, chartH } = layout;
+  const top = pad.top;
+  const bottom = top + chartH;
+  for (const m of markers) {
+    const x = toX(m.time);
+    const y = toY(m.value);
+    if (x < pad.left - SIZE - 2 || x > w - pad.right + SIZE + 2) continue;
+    if (y < top - SIZE - 2 || y > bottom + SIZE + 2) continue;
+    ctx.save();
+    ctx.beginPath();
+    if (m.side === "buy") {
+      ctx.moveTo(x, y + GAP);
+      ctx.lineTo(x - SIZE, y + GAP + SIZE * 1.6);
+      ctx.lineTo(x + SIZE, y + GAP + SIZE * 1.6);
+    } else {
+      ctx.moveTo(x, y - GAP);
+      ctx.lineTo(x - SIZE, y - GAP - SIZE * 1.6);
+      ctx.lineTo(x + SIZE, y - GAP - SIZE * 1.6);
+    }
+    ctx.closePath();
+    ctx.fillStyle = m.color;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
+    ctx.stroke();
+    if (m.label) {
+      const fontSize = 9;
+      ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = m.side === "buy" ? "top" : "bottom";
+      const labelY = m.side === "buy" ? y + GAP + SIZE * 1.6 + 3 : y - GAP - SIZE * 1.6 - 3;
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
+      ctx.lineJoin = "round";
+      ctx.strokeText(m.label, x, labelY);
+      ctx.fillStyle = m.labelColor ?? m.color;
+      ctx.fillText(m.label, x, labelY);
+    }
+    ctx.restore();
+  }
+}
+
 // src/draw/index.ts
 var SHAKE_DECAY_RATE = 2e-3;
 var SHAKE_MIN_AMPLITUDE = 0.2;
@@ -1661,6 +1707,12 @@ function drawFrame(ctx, layout, palette, opts) {
       }
       drawParticles(ctx, opts.particleState, opts.dt);
     }
+  }
+  if (opts.markers && opts.markers.length > 0 && reveal > 0.3) {
+    ctx.save();
+    if (reveal < 1) ctx.globalAlpha = (reveal - 0.3) / 0.7;
+    drawSeriesMarkers(ctx, layout, opts.markers);
+    ctx.restore();
   }
   const fadeW = FADE_EDGE_WIDTH;
   ctx.save();
@@ -1790,6 +1842,12 @@ function drawMultiFrame(ctx, layout, opts) {
       }
       ctx.restore();
     }
+  }
+  if (opts.markers && opts.markers.length > 0 && reveal > 0.3) {
+    ctx.save();
+    if (reveal < 1) ctx.globalAlpha = (reveal - 0.3) / 0.7;
+    drawSeriesMarkers(ctx, layout, opts.markers);
+    ctx.restore();
   }
   ctx.save();
   ctx.globalCompositeOperation = "destination-out";
@@ -3484,6 +3542,16 @@ function useLivelineEngine(canvasRef, containerRef, config) {
         const awayLabel = cfg.scoreLabels?.away ?? "Away";
         scoreLine = `${homeLabel} ${home} - ${away} ${awayLabel}`;
       }
+      const seriesColor = /* @__PURE__ */ new Map();
+      for (const s of effectiveMultiSeries) seriesColor.set(s.id, s.palette.line);
+      const drawMarkers = cfg.markers?.map((m) => ({
+        time: m.time,
+        value: m.value,
+        color: m.color ?? (m.seriesId ? seriesColor.get(m.seriesId) : void 0) ?? cfg.palette.line,
+        side: m.side,
+        label: m.label,
+        labelColor: m.labelColor
+      }));
       drawMultiFrame(ctx, layout, {
         series: seriesEntries,
         now,
@@ -3508,6 +3576,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
         now_ms,
         primaryPalette: cfg.palette,
         eventLines: cfg.eventLines,
+        markers: drawMarkers,
         disableGridEdgeFade: !!cfg.fixedRange,
         disableCrosshairFade: matchFrozen || !cfg.tooltipFade,
         scoreLine,
@@ -3688,6 +3757,14 @@ function useLivelineEngine(canvasRef, containerRef, config) {
         pauseProgress: matchFrozen ? 1 : pauseProgress,
         now_ms,
         eventLines: cfg.eventLines,
+        markers: cfg.markers?.map((m) => ({
+          time: m.time,
+          value: m.value,
+          color: m.color ?? cfg.palette.line,
+          side: m.side,
+          label: m.label,
+          labelColor: m.labelColor
+        })),
         disableGridEdgeFade: !!cfg.fixedRange,
         disableCrosshairFade: matchFrozen || !cfg.tooltipFade,
         formatTimeCrosshair: effectiveFormatTimeExact,
@@ -3799,6 +3876,7 @@ function Liveline({
   showLegend = true,
   fixedRange,
   eventLines,
+  markers,
   scoreEvents,
   scoreLabels,
   matchTimeline,
@@ -3944,6 +4022,7 @@ function Liveline({
     hiddenSeriesIds: hiddenSeries,
     fixedRange,
     eventLines,
+    markers,
     scoreEvents,
     scoreLabels,
     matchTimeline,

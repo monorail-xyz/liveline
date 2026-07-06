@@ -55,6 +55,24 @@ export interface EventLine {
   labelOffset?: number
 }
 
+/** A trade marker drawn as a triangle sitting on a series line. */
+export interface SeriesMarker {
+  /** Unix seconds — same axis as LivelinePoint.time */
+  time: number
+  /** Y value in chart units (e.g. 0-100 for %) — where the marker sits on the line */
+  value: number
+  /** Which series this belongs to — colors the triangle to that line's color */
+  seriesId?: string
+  /** 'buy' → up triangle, 'sell' → down triangle */
+  side: 'buy' | 'sell'
+  /** Optional color override (defaults to the series line color) */
+  color?: string
+  /** Optional label near the marker (e.g. realized PnL "+$4.20") */
+  label?: string
+  /** Optional label color (e.g. green/red for PnL) */
+  labelColor?: string
+}
+
 export interface HoverPoint {
   time: number
   value: number
@@ -144,6 +162,10 @@ export interface LivelineProps {
 
   // Event lines — vertical markers at specific timestamps
   eventLines?: EventLine[]
+
+  // Trade markers — triangles sitting on a series line (buy ▲ / sell ▼),
+  // colored to the series, with an optional label (e.g. PnL on sells)
+  markers?: SeriesMarker[]
 
   // Score events — for computing score at crosshair hover time
   scoreEvents?: ScoreEvent[]

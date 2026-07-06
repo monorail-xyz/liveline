@@ -17,6 +17,7 @@ export type {
   WindowStyle,
   BadgeVariant,
   EventLine,
+  SeriesMarker,
   ScoreEvent,
   MatchPeriod,
   MatchTimeline,

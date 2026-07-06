@@ -11,6 +11,7 @@ import { drawParticles, spawnOnSwing, type ParticleState } from './particles'
 import { drawCandlesticks, drawClosePrice, drawCandleCrosshair, drawLineModeCrosshair } from './candlestick'
 import { drawEmpty } from './empty'
 import { drawEventLines } from './eventLines'
+import { drawSeriesMarkers, type DrawMarker } from './seriesMarkers'
 import type { EventLine } from '../types'
 
 // Constants
@@ -63,6 +64,7 @@ export interface DrawOptions {
   pauseProgress: number     // 0 = playing, 1 = fully paused
   now_ms: number            // performance.now() for breathing animation timing
   eventLines?: EventLine[]
+  markers?: DrawMarker[]
   disableGridEdgeFade?: boolean
   formatTimeCrosshair?: (t: number) => string
   /** Align time axis labels to round multiples relative to this base (e.g. kickoff time). */
@@ -208,6 +210,14 @@ export function drawFrame(
     }
   }
 
+  // 6b. Trade markers (above the line, below the crosshair)
+  if (opts.markers && opts.markers.length > 0 && reveal > 0.3) {
+    ctx.save()
+    if (reveal < 1) ctx.globalAlpha = (reveal - 0.3) / 0.7
+    drawSeriesMarkers(ctx, layout, opts.markers)
+    ctx.restore()
+  }
+
   // 7. Left edge fade — gradient erase
   const fadeW = FADE_EDGE_WIDTH
   ctx.save()
@@ -287,6 +297,7 @@ export interface MultiSeriesDrawOptions {
   /** Primary palette (from first series) for grid/axis/crosshair colors */
   primaryPalette: LivelinePalette
   eventLines?: EventLine[]
+  markers?: DrawMarker[]
   disableGridEdgeFade?: boolean
   /** Score line displayed in crosshair tooltip (e.g. "Arsenal 0 - 1 Chelsea") */
   scoreLine?: string
@@ -406,6 +417,14 @@ export function drawMultiFrame(
       }
       ctx.restore()
     }
+  }
+
+  // 5c. Trade markers (above the lines, below the crosshair)
+  if (opts.markers && opts.markers.length > 0 && reveal > 0.3) {
+    ctx.save()
+    if (reveal < 1) ctx.globalAlpha = (reveal - 0.3) / 0.7
+    drawSeriesMarkers(ctx, layout, opts.markers)
+    ctx.restore()
   }
 
   // 6. Left edge fade

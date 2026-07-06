@@ -49,6 +49,23 @@ interface EventLine {
     /** Vertical offset for the label pill in px — positive moves down (default: 0) */
     labelOffset?: number;
 }
+/** A trade marker drawn as a triangle sitting on a series line. */
+interface SeriesMarker {
+    /** Unix seconds — same axis as LivelinePoint.time */
+    time: number;
+    /** Y value in chart units (e.g. 0-100 for %) — where the marker sits on the line */
+    value: number;
+    /** Which series this belongs to — colors the triangle to that line's color */
+    seriesId?: string;
+    /** 'buy' → up triangle, 'sell' → down triangle */
+    side: 'buy' | 'sell';
+    /** Optional color override (defaults to the series line color) */
+    color?: string;
+    /** Optional label near the marker (e.g. realized PnL "+$4.20") */
+    label?: string;
+    /** Optional label color (e.g. green/red for PnL) */
+    labelColor?: string;
+}
 interface HoverPoint {
     time: number;
     value: number;
@@ -115,6 +132,7 @@ interface LivelineProps {
         max: number;
     };
     eventLines?: EventLine[];
+    markers?: SeriesMarker[];
     scoreEvents?: ScoreEvent[];
     /** Labels for score display (default: series labels or "Home"/"Away") */
     scoreLabels?: {
@@ -157,7 +175,7 @@ interface CandlePoint {
     close: number;
 }
 
-declare function Liveline({ data, value, series: seriesProp, theme, color, window: windowSecs, grid, badge, momentum, fill, scrub, loading, paused, emptyText, exaggerate, degen: degenProp, badgeTail, badgeVariant, showValue, valueMomentumColor, windows, onWindowChange, windowStyle, tooltipY, tooltipOutline, tooltipFade, orderbook, referenceLine, formatValue, formatTime, lerpSpeed, padding: paddingOverride, onHover, cursor, pulse, mode, candles, candleWidth, liveCandle, lineMode, lineData, lineValue, onModeChange, onSeriesToggle, seriesToggleCompact, showLegend, fixedRange, eventLines, scoreEvents, scoreLabels, matchTimeline, selectedPeriodId, backgroundImage, className, style, }: LivelineProps): react_jsx_runtime.JSX.Element;
+declare function Liveline({ data, value, series: seriesProp, theme, color, window: windowSecs, grid, badge, momentum, fill, scrub, loading, paused, emptyText, exaggerate, degen: degenProp, badgeTail, badgeVariant, showValue, valueMomentumColor, windows, onWindowChange, windowStyle, tooltipY, tooltipOutline, tooltipFade, orderbook, referenceLine, formatValue, formatTime, lerpSpeed, padding: paddingOverride, onHover, cursor, pulse, mode, candles, candleWidth, liveCandle, lineMode, lineData, lineValue, onModeChange, onSeriesToggle, seriesToggleCompact, showLegend, fixedRange, eventLines, markers, scoreEvents, scoreLabels, matchTimeline, selectedPeriodId, backgroundImage, className, style, }: LivelineProps): react_jsx_runtime.JSX.Element;
 
 interface LivelineTransitionProps {
     /** Key of the active child to display. Must match a child's `key` prop. */
@@ -183,4 +201,4 @@ interface LivelineTransitionProps {
  */
 declare function LivelineTransition({ active, children, duration, className, style, }: LivelineTransitionProps): react_jsx_runtime.JSX.Element;
 
-export { type BadgeVariant, type CandlePoint, type DegenOptions, type EventLine, type HoverPoint, Liveline, type LivelinePoint, type LivelineProps, type LivelineSeries, LivelineTransition, type LivelineTransitionProps, type MatchPeriod, type MatchTimeline, type Momentum, type OrderbookData, type Padding, type ReferenceLine, type ScoreEvent, type ThemeMode, type WindowOption, type WindowStyle };
+export { type BadgeVariant, type CandlePoint, type DegenOptions, type EventLine, type HoverPoint, Liveline, type LivelinePoint, type LivelineProps, type LivelineSeries, LivelineTransition, type LivelineTransitionProps, type MatchPeriod, type MatchTimeline, type Momentum, type OrderbookData, type Padding, type ReferenceLine, type ScoreEvent, type SeriesMarker, type ThemeMode, type WindowOption, type WindowStyle };

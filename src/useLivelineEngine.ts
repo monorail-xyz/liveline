@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react'
-import type { LivelinePoint, LivelinePalette, LivelineSeries, Momentum, ReferenceLine, HoverPoint, Padding, ChartLayout, OrderbookData, DegenOptions, BadgeVariant, CandlePoint, EventLine, ScoreEvent, MatchTimeline } from './types'
+import type { LivelinePoint, LivelinePalette, LivelineSeries, Momentum, ReferenceLine, HoverPoint, Padding, ChartLayout, OrderbookData, DegenOptions, BadgeVariant, CandlePoint, EventLine, ScoreEvent, MatchTimeline, SeriesMarker } from './types'
 import { lerp } from './math/lerp'
 import { computeRange } from './math/range'
 import { detectMomentum } from './math/momentum'
@@ -72,6 +72,9 @@ interface EngineConfig {
 
   // Event lines
   eventLines?: EventLine[]
+
+  // Trade markers
+  markers?: SeriesMarker[]
 
   // Score events
   scoreEvents?: ScoreEvent[]
@@ -1803,6 +1806,18 @@ export function useLivelineEngine(
     }
 
     // Draw multi-series frame
+    // Resolve trade markers to concrete colors from each series' line color.
+    const seriesColor = new Map<string, string>()
+    for (const s of effectiveMultiSeries) seriesColor.set(s.id, s.palette.line)
+    const drawMarkers = cfg.markers?.map((m) => ({
+      time: m.time,
+      value: m.value,
+      color: m.color ?? (m.seriesId ? seriesColor.get(m.seriesId) : undefined) ?? cfg.palette.line,
+      side: m.side,
+      label: m.label,
+      labelColor: m.labelColor,
+    }))
+
     drawMultiFrame(ctx, layout, {
       series: seriesEntries,
       now,
@@ -1827,6 +1842,7 @@ export function useLivelineEngine(
       now_ms,
       primaryPalette: cfg.palette,
       eventLines: cfg.eventLines,
+      markers: drawMarkers,
       disableGridEdgeFade: !!cfg.fixedRange,
       disableCrosshairFade: matchFrozen || !cfg.tooltipFade,
       scoreLine,
@@ -2022,6 +2038,14 @@ export function useLivelineEngine(
       pauseProgress: matchFrozen ? 1 : pauseProgress,
       now_ms,
       eventLines: cfg.eventLines,
+      markers: cfg.markers?.map((m) => ({
+        time: m.time,
+        value: m.value,
+        color: m.color ?? cfg.palette.line,
+        side: m.side,
+        label: m.label,
+        labelColor: m.labelColor,
+      })),
       disableGridEdgeFade: !!cfg.fixedRange,
       disableCrosshairFade: matchFrozen || !cfg.tooltipFade,
       formatTimeCrosshair: effectiveFormatTimeExact,
